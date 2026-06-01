@@ -1067,6 +1067,156 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             }
         }
 
+        //[HttpGet]
+        //public async Task<IActionResult> GetCOA()
+        //{
+        //    try
+        //    {
+        //        // Build connection string using session database
+        //        var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+        //        {
+        //            Database = HttpContext.Session.GetString("DatabaseName")
+        //                       ?? _config.GetConnectionString("DefaultDatabase")
+        //        };
+
+        //        string connStr = connStrBuilder.ConnectionString;
+
+        //        // ---------------- Level 1 ----------------
+        //        List<CoaNode> level1 = new();
+        //        using (var conn = new MySqlConnection(connStr))
+        //        {
+        //            await conn.OpenAsync();
+        //            string query = "SELECT id, code, name FROM tbl_coa_level_1 ORDER BY id";
+
+        //            using var cmd = new MySqlCommand(query, conn);
+        //            using var reader = await cmd.ExecuteReaderAsync();
+
+        //            while (await reader.ReadAsync())
+        //            {
+        //                level1.Add(new CoaNode
+        //                {
+        //                    Id = reader.GetInt32("id"),
+        //                    Code = reader["code"].ToString(),
+        //                    Name = reader["name"].ToString(),
+        //                    Children = new List<CoaNode>()
+        //                });
+        //            }
+        //        }
+
+        //        // ---------------- Level 2 ----------------
+        //        var level2Dict = new Dictionary<int, List<CoaNode>>();
+        //        using (var conn = new MySqlConnection(connStr))
+        //        {
+        //            await conn.OpenAsync();
+        //            string query = "SELECT id, code, name, main_id FROM tbl_coa_level_2 ORDER BY id";
+
+        //            using var cmd = new MySqlCommand(query, conn);
+        //            using var reader = await cmd.ExecuteReaderAsync();
+
+        //            while (await reader.ReadAsync())
+        //            {
+        //                var node = new CoaNode
+        //                {
+        //                    Id = reader.GetInt32("id"),
+        //                    Code = reader["code"].ToString(),
+        //                    Name = reader["name"].ToString(),
+        //                    Children = new List<CoaNode>()
+        //                };
+
+        //                int parent = reader.GetInt32("main_id");
+        //                if (!level2Dict.ContainsKey(parent))
+        //                    level2Dict[parent] = new List<CoaNode>();
+
+        //                level2Dict[parent].Add(node);
+        //            }
+        //        }
+
+        //        // Attach level 2
+        //        foreach (var l1 in level1)
+        //            if (level2Dict.ContainsKey(l1.Id))
+        //                l1.Children.AddRange(level2Dict[l1.Id]);
+
+        //        // ---------------- Level 3 ----------------
+        //        var level3Dict = new Dictionary<int, List<CoaNode>>();
+        //        using (var conn = new MySqlConnection(connStr))
+        //        {
+        //            await conn.OpenAsync();
+        //            string query = "SELECT id, code, name, main_id FROM tbl_coa_level_3 ORDER BY id";
+
+        //            using var cmd = new MySqlCommand(query, conn);
+        //            using var reader = await cmd.ExecuteReaderAsync();
+
+        //            while (await reader.ReadAsync())
+        //            {
+        //                var node = new CoaNode
+        //                {
+        //                    Id = reader.GetInt32("id"),
+        //                    Code = reader["code"].ToString(),
+        //                    Name = reader["name"].ToString(),
+        //                    Children = new List<CoaNode>()
+        //                };
+
+        //                int parent = reader.GetInt32("main_id");
+        //                if (!level3Dict.ContainsKey(parent))
+        //                    level3Dict[parent] = new List<CoaNode>();
+
+        //                level3Dict[parent].Add(node);
+        //            }
+        //        }
+
+        //        // Attach level 3
+        //        foreach (var l1 in level1)
+        //            foreach (var l2 in l1.Children)
+        //                if (level3Dict.ContainsKey(l2.Id))
+        //                    l2.Children.AddRange(level3Dict[l2.Id]);
+
+        //        // ---------------- Level 4 ----------------
+        //        var level4Dict = new Dictionary<int, List<CoaNode>>();
+        //        using (var conn = new MySqlConnection(connStr))
+        //        {
+        //            await conn.OpenAsync();
+        //            string query = "SELECT id, code, name, main_id, debit, credit, date, costcenter FROM tbl_coa_level_4 ORDER BY id";
+
+        //            using var cmd = new MySqlCommand(query, conn);
+        //            using var reader = await cmd.ExecuteReaderAsync();
+
+        //            while (await reader.ReadAsync())
+        //            {
+        //                var node = new CoaNode
+        //                {
+        //                    Id = reader.GetInt32("id"),
+        //                    Code = reader["code"].ToString(),
+        //                    Name = reader["name"].ToString(),
+        //                    Debit = reader["debit"] != DBNull.Value ? reader.GetDecimal("debit") : 0,
+        //                    Credit = reader["credit"] != DBNull.Value ? reader.GetDecimal("credit") : 0,
+        //                    Date = reader["date"] != DBNull.Value ? reader.GetDateTime("date") : null,
+        //                    CostCenter = reader.IsDBNull(reader.GetOrdinal("costcenter"))?  0 : reader.GetInt32(reader.GetOrdinal("costcenter"))
+
+        //                };
+
+        //                int parent = reader.GetInt32("main_id");
+        //                if (!level4Dict.ContainsKey(parent))
+        //                    level4Dict[parent] = new List<CoaNode>();
+
+        //                level4Dict[parent].Add(node);
+        //            }
+        //        }
+
+        //        // Attach level 4
+        //        foreach (var l1 in level1)
+        //            foreach (var l2 in l1.Children)
+        //                foreach (var l3 in l2.Children)
+        //                    if (level4Dict.ContainsKey(l3.Id))
+        //                        l3.Children.AddRange(level4Dict[l3.Id]);
+
+        //        return Ok(new { status = true, data = level1 });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { status = false, message = ex.Message });
+        //    }
+        //}
+
         [HttpGet]
         public async Task<IActionResult> GetCOA()
         {
@@ -1086,7 +1236,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 using (var conn = new MySqlConnection(connStr))
                 {
                     await conn.OpenAsync();
-                    string query = "SELECT id, code, name FROM tbl_coa_level_1 ORDER BY id";
+                    string query = "SELECT id, code, name FROM tbl_coa_level_1 ORDER BY code";
 
                     using var cmd = new MySqlCommand(query, conn);
                     using var reader = await cmd.ExecuteReaderAsync();
@@ -1104,11 +1254,12 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 }
 
                 // ---------------- Level 2 ----------------
+                // main_id = tbl_coa_level_1.code
                 var level2Dict = new Dictionary<int, List<CoaNode>>();
                 using (var conn = new MySqlConnection(connStr))
                 {
                     await conn.OpenAsync();
-                    string query = "SELECT id, code, name, main_id FROM tbl_coa_level_2 ORDER BY id";
+                    string query = "SELECT id, code, name, main_id FROM tbl_coa_level_2 ORDER BY code";
 
                     using var cmd = new MySqlCommand(query, conn);
                     using var reader = await cmd.ExecuteReaderAsync();
@@ -1131,17 +1282,20 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     }
                 }
 
-                // Attach level 2
+                // Attach Level 2 → match by Level 1 CODE
                 foreach (var l1 in level1)
-                    if (level2Dict.ContainsKey(l1.Id))
-                        l1.Children.AddRange(level2Dict[l1.Id]);
+                {
+                    if (int.TryParse(l1.Code, out int l1Code) && level2Dict.ContainsKey(l1Code))
+                        l1.Children.AddRange(level2Dict[l1Code]);
+                }
 
                 // ---------------- Level 3 ----------------
+                // main_id = tbl_coa_level_2.code
                 var level3Dict = new Dictionary<int, List<CoaNode>>();
                 using (var conn = new MySqlConnection(connStr))
                 {
                     await conn.OpenAsync();
-                    string query = "SELECT id, code, name, main_id FROM tbl_coa_level_3 ORDER BY id";
+                    string query = "SELECT id, code, name, main_id FROM tbl_coa_level_3 ORDER BY code";
 
                     using var cmd = new MySqlCommand(query, conn);
                     using var reader = await cmd.ExecuteReaderAsync();
@@ -1164,14 +1318,18 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     }
                 }
 
-                // Attach level 3
+                // Attach Level 3 → match by Level 2 CODE
                 foreach (var l1 in level1)
                     foreach (var l2 in l1.Children)
-                        if (level3Dict.ContainsKey(l2.Id))
-                            l2.Children.AddRange(level3Dict[l2.Id]);
+                    {
+                        if (int.TryParse(l2.Code, out int l2Code) && level3Dict.ContainsKey(l2Code))
+                            l2.Children.AddRange(level3Dict[l2Code]);
+                    }
 
                 // ---------------- Level 4 ----------------
-                var level4Dict = new Dictionary<int, List<CoaNode>>();
+                // main_id = tbl_coa_level_3.code
+                // Key: use long because some codes like 110410001 exceed int range
+                var level4Dict = new Dictionary<long, List<CoaNode>>();
                 using (var conn = new MySqlConnection(connStr))
                 {
                     await conn.OpenAsync();
@@ -1190,11 +1348,13 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                             Debit = reader["debit"] != DBNull.Value ? reader.GetDecimal("debit") : 0,
                             Credit = reader["credit"] != DBNull.Value ? reader.GetDecimal("credit") : 0,
                             Date = reader["date"] != DBNull.Value ? reader.GetDateTime("date") : null,
-                            CostCenter = reader.IsDBNull(reader.GetOrdinal("costcenter"))?  0 : reader.GetInt32(reader.GetOrdinal("costcenter"))
-
+                            CostCenter = reader.IsDBNull(reader.GetOrdinal("costcenter"))
+                                            ? 0
+                                            : reader.GetInt32(reader.GetOrdinal("costcenter"))
                         };
 
-                        int parent = reader.GetInt32("main_id");
+                        // main_id in level4 references level3.code (stored as int in DB)
+                        long parent = reader.GetInt32("main_id");
                         if (!level4Dict.ContainsKey(parent))
                             level4Dict[parent] = new List<CoaNode>();
 
@@ -1202,12 +1362,14 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     }
                 }
 
-                // Attach level 4
+                // Attach Level 4 → match by Level 3 CODE
                 foreach (var l1 in level1)
                     foreach (var l2 in l1.Children)
                         foreach (var l3 in l2.Children)
-                            if (level4Dict.ContainsKey(l3.Id))
-                                l3.Children.AddRange(level4Dict[l3.Id]);
+                        {
+                            if (long.TryParse(l3.Code, out long l3Code) && level4Dict.ContainsKey(l3Code))
+                                l3.Children.AddRange(level4Dict[l3Code]);
+                        }
 
                 return Ok(new { status = true, data = level1 });
             }
@@ -1216,7 +1378,6 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
         [HttpGet]
         public async Task<IActionResult> GetLevel3AccountsByLevel2(int id)
         {
@@ -1389,41 +1550,116 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+        //[HttpGet]
+        //public async Task<IActionResult> GetLevel4AccountById(int id)
+        //{
+        //    if (id <= 0)
+        //        return BadRequest(new { status = false, message = "Invalid Level 4 ID" });
+
+        //    try
+        //    {
+        //        var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+        //        {
+        //            Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+        //        };
+
+        //        using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+        //        await conn.OpenAsync();
+
+        //        string query = @"
+        //    SELECT 
+        //        l4.id AS Level4Id,
+        //        l4.name AS Level4Name,
+        //        l4.code AS Level4Code,
+        //        l4.debit AS Debit,
+        //        l4.credit AS Credit,
+        //        l4.date AS Date,
+        //        IFNULL(l4.costcenter, 0) AS CostCenter,
+        //        l4.main_id AS Level3Id,
+        //        l3.name AS Level3Name,
+        //        l3.main_id AS Level2Id,
+        //        l2.name AS Level2Name,
+        //        l2.main_id AS Level1Id,
+        //        l1.name AS Level1Name
+        //    FROM tbl_coa_level_4 l4
+        //    INNER JOIN tbl_coa_level_3 l3 ON l4.main_id = l3.id
+        //    INNER JOIN tbl_coa_level_2 l2 ON l3.main_id = l2.id
+        //    INNER JOIN tbl_coa_level_1 l1 ON l2.main_id = l1.id
+        //    WHERE l4.id = @id
+        //    LIMIT 1;";
+
+        //        using var cmd = new MySqlCommand(query, conn);
+        //        cmd.Parameters.AddWithValue("@id", id);
+
+        //        using var reader = await cmd.ExecuteReaderAsync();
+        //        if (await reader.ReadAsync())
+        //        {
+        //            var data = new
+        //            {
+        //                Level4Id = reader["Level4Id"] is DBNull ? 0 : Convert.ToInt32(reader["Level4Id"]),
+        //                Level4Name = reader["Level4Name"]?.ToString() ?? "",
+        //                Level4Code = reader["Level4Code"]?.ToString() ?? "",
+        //                Debit = reader["Debit"] != DBNull.Value ? Convert.ToDecimal(reader["Debit"]) : 0,
+        //                Credit = reader["Credit"] != DBNull.Value ? Convert.ToDecimal(reader["Credit"]) : 0,
+        //                Date = reader["Date"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(reader["Date"]),
+        //                CostCenter = reader["CostCenter"] != DBNull.Value ? Convert.ToInt32(reader["CostCenter"]) : 0,
+        //                Level3Id = reader["Level3Id"] != DBNull.Value ? Convert.ToInt32(reader["Level3Id"]) : 0,
+        //                Level3Name = reader["Level3Name"]?.ToString() ?? "",
+        //                Level2Id = reader["Level2Id"] != DBNull.Value ? Convert.ToInt32(reader["Level2Id"]) : 0,
+        //                Level2Name = reader["Level2Name"]?.ToString() ?? "",
+        //                Level1Id = reader["Level1Id"] != DBNull.Value ? Convert.ToInt32(reader["Level1Id"]) : 0,
+        //                Level1Name = reader["Level1Name"]?.ToString() ?? ""
+        //            };
+
+        //            return Ok(new { status = true, data });
+        //        }
+        //        else
+        //        {
+        //            return NotFound(new { status = false, message = "Level 4 account not found." });
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { status = false, message = ex.Message });
+        //    }
+        //}
+
         [HttpGet]
         public async Task<IActionResult> GetLevel4AccountById(int id)
         {
             if (id <= 0)
                 return BadRequest(new { status = false, message = "Invalid Level 4 ID" });
-
             try
             {
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
                     Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
                 };
-
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
                 string query = @"
             SELECT 
-                l4.id AS Level4Id,
-                l4.name AS Level4Name,
-                l4.code AS Level4Code,
-                l4.debit AS Debit,
-                l4.credit AS Credit,
-                l4.date AS Date,
+                l4.id        AS Level4Id,
+                l4.name      AS Level4Name,
+                l4.code      AS Level4Code,
+                l4.debit     AS Debit,
+                l4.credit    AS Credit,
+                l4.date      AS Date,
                 IFNULL(l4.costcenter, 0) AS CostCenter,
-                l4.main_id AS Level3Id,
-                l3.name AS Level3Name,
-                l3.main_id AS Level2Id,
-                l2.name AS Level2Name,
-                l2.main_id AS Level1Id,
-                l1.name AS Level1Name
+                l3.id        AS Level3Id,
+                l3.code      AS Level3Code,
+                l3.name      AS Level3Name,
+                l2.id        AS Level2Id,
+                l2.code      AS Level2Code,
+                l2.name      AS Level2Name,
+                l1.id        AS Level1Id,
+                l1.code      AS Level1Code,
+                l1.name      AS Level1Name
             FROM tbl_coa_level_4 l4
-            INNER JOIN tbl_coa_level_3 l3 ON l4.main_id = l3.id
-            INNER JOIN tbl_coa_level_2 l2 ON l3.main_id = l2.id
-            INNER JOIN tbl_coa_level_1 l1 ON l2.main_id = l1.id
+            INNER JOIN tbl_coa_level_3 l3 ON l4.main_id = l3.code
+            INNER JOIN tbl_coa_level_2 l2 ON l3.main_id = l2.code
+            INNER JOIN tbl_coa_level_1 l1 ON l2.main_id = l1.code
             WHERE l4.id = @id
             LIMIT 1;";
 
@@ -1435,21 +1671,26 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 {
                     var data = new
                     {
-                        Level4Id = reader["Level4Id"] is DBNull ? 0 : Convert.ToInt32(reader["Level4Id"]),
+                        Level4Id = reader["Level4Id"] != DBNull.Value ? Convert.ToInt32(reader["Level4Id"]) : 0,
                         Level4Name = reader["Level4Name"]?.ToString() ?? "",
                         Level4Code = reader["Level4Code"]?.ToString() ?? "",
                         Debit = reader["Debit"] != DBNull.Value ? Convert.ToDecimal(reader["Debit"]) : 0,
                         Credit = reader["Credit"] != DBNull.Value ? Convert.ToDecimal(reader["Credit"]) : 0,
                         Date = reader["Date"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(reader["Date"]),
                         CostCenter = reader["CostCenter"] != DBNull.Value ? Convert.ToInt32(reader["CostCenter"]) : 0,
+
                         Level3Id = reader["Level3Id"] != DBNull.Value ? Convert.ToInt32(reader["Level3Id"]) : 0,
+                        Level3Code = reader["Level3Code"]?.ToString() ?? "",
                         Level3Name = reader["Level3Name"]?.ToString() ?? "",
+
                         Level2Id = reader["Level2Id"] != DBNull.Value ? Convert.ToInt32(reader["Level2Id"]) : 0,
+                        Level2Code = reader["Level2Code"]?.ToString() ?? "",
                         Level2Name = reader["Level2Name"]?.ToString() ?? "",
+
                         Level1Id = reader["Level1Id"] != DBNull.Value ? Convert.ToInt32(reader["Level1Id"]) : 0,
+                        Level1Code = reader["Level1Code"]?.ToString() ?? "",
                         Level1Name = reader["Level1Name"]?.ToString() ?? ""
                     };
-
                     return Ok(new { status = true, data });
                 }
                 else
