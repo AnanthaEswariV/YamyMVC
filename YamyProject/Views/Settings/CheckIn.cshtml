@@ -158,8 +158,6 @@
                 }
             });
         });
-
-        // ✅ Submit Check-In or Check-Out
         function submitAttendance(type) {
             var lat     = $("#latitude").val();
             var lng     = $("#longitude").val();
@@ -170,14 +168,23 @@
                 return;
             }
 
-            // Disable button to prevent double click
             $("#btnCheckIn, #btnCheckOut").prop("disabled", true);
 
+            // ✅ Capture device local time
+            var now = new Date();
+            var deviceTime = now.getFullYear() + '-' +
+                String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                String(now.getDate()).padStart(2, '0') + ' ' +
+                String(now.getHours()).padStart(2, '0') + ':' +
+                String(now.getMinutes()).padStart(2, '0') + ':' +
+                String(now.getSeconds()).padStart(2, '0');
+
             var payload = {
-                Latitude: parseFloat(lat),
-                Longitude: parseFloat(lng),
-                Type: type,
-                LocationAddress: address
+                Latitude:        parseFloat(lat),
+                Longitude:       parseFloat(lng),
+                Type:            type,
+                LocationAddress: address,
+                DeviceTime:      deviceTime   // ✅ send to server
             };
 
             $.ajax({
@@ -188,7 +195,6 @@
                 success: function (res) {
                     if (res.status) {
                         toastr.success(res.message);
-
                         if (res.type === "IN") {
                             showCheckInInfo(res.time, address);
                             $("#btnCheckIn").hide();
@@ -209,7 +215,6 @@
                 }
             });
         }
-
         // 🖥️ Show Check-In fields
         function showCheckInInfo(time, address) {
             $("#checkInTimeDisplay").val(time);

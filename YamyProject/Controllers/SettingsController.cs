@@ -301,11 +301,11 @@
                         (LabourId, CheckInTime, Latitude, Longitude, CheckInAddress)
                     VALUES 
                         (@labourId, @time, @lat, @lng, @address)";
-
+                    DateTime checkInTime = DateTime.Parse(model.DeviceTime);
                     using (var insertCmd = new MySqlCommand(insertQuery, conn))
                     {
                         insertCmd.Parameters.AddWithValue("@labourId", labourId);
-                        insertCmd.Parameters.AddWithValue("@time", DateTime.Now);
+                        insertCmd.Parameters.AddWithValue("@time", checkInTime);
                         insertCmd.Parameters.AddWithValue("@lat", model.Latitude);
                         insertCmd.Parameters.AddWithValue("@lng", model.Longitude);
                         insertCmd.Parameters.AddWithValue("@address", model.LocationAddress ?? "");
@@ -316,8 +316,8 @@
                     {
                         status = true,
                         message = "Check-In successful!",
-                        time = DateTime.Now.ToString("hh:mm tt"),
-                        date = DateTime.Now.ToString("dd MMM yyyy"),
+                        time = checkInTime.ToString("hh:mm tt"),
+                        date = checkInTime.ToString("dd MMM yyyy"),
                         type = "IN"
                     });
                 }
@@ -349,10 +349,10 @@
                         CheckOutLongitude = @lng,
                         CheckOutAddress   = @address
                     WHERE Id = @id";
-
+                    DateTime checkOutTime = DateTime.Parse(model.DeviceTime);
                     using (var updateCmd = new MySqlCommand(updateQuery, conn))
                     {
-                        updateCmd.Parameters.AddWithValue("@time", DateTime.Now);
+                        updateCmd.Parameters.AddWithValue("@time", checkOutTime);
                         updateCmd.Parameters.AddWithValue("@lat", model.Latitude);
                         updateCmd.Parameters.AddWithValue("@lng", model.Longitude);
                         updateCmd.Parameters.AddWithValue("@address", model.LocationAddress ?? "");
@@ -364,8 +364,8 @@
                     {
                         status = true,
                         message = "Check-Out successful!",
-                        time = DateTime.Now.ToString("hh:mm tt"),
-                        date = DateTime.Now.ToString("dd MMM yyyy"),
+                        time = checkOutTime.ToString("hh:mm tt"),
+                        date = checkOutTime.ToString("dd MMM yyyy"),
                         type = "OUT"
                     });
                 }

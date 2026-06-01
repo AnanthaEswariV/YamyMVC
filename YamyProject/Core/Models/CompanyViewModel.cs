@@ -264,6 +264,7 @@ namespace YamyProject.Core.Models
         public double Longitude { get; set; }
         public string Type { get; set; }            // "IN" or "OUT"
         public string LocationAddress { get; set; } // full readable address
+        public string DeviceTime { get; set; }
     }
     //public class ItemRequest
     //{
