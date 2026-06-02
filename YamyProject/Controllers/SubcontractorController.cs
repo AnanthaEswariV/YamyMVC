@@ -86,11 +86,11 @@ namespace YamyProject.Controllers
         LEFT JOIN tbl_vendor_category tc ON c.Cat_id = tc.id
         WHERE c.type = 'Subcontractor'";
 
-                // State filter
-                if (state == "Active Subcontractor")
-                    query += " AND c.active = 0";
-                else if (state == "Inactive Subcontractor")
-                    query += " AND c.active != 0";
+                //// State filter
+                //if (state == "Active Subcontractor")
+                //    query += " AND c.active = 0";
+                //else if (state == "Inactive Subcontractor")
+                //    query += " AND c.active != 0";
 
                 using var cmd = new MySqlCommand(query, conn);
                 using var reader = await cmd.ExecuteReaderAsync();
@@ -122,21 +122,21 @@ namespace YamyProject.Controllers
                         Email = reader["email"]?.ToString() ?? "-",
                         TRN = reader["trn"]?.ToString() ?? "-",
                         Amount = Convert.ToDecimal(reader["Amount"]),
-                        Cat_id = reader.GetInt32("Cat_id"),
+                        Cat_id = reader["Cat_id"] != DBNull.Value ? Convert.ToInt32(reader["Cat_id"]) : 0,
                         Mobile = reader["mobile"]?.ToString() ?? "-",
                         CCMail = reader["ccemail"]?.ToString() ?? "-",
                         Website = reader["website"]?.ToString() ?? "-",
                         Country = reader["country"]?.ToString() ?? "-",
                         City = reader["city"]?.ToString() ?? "-",
                         BuildingName = reader["building_name"]?.ToString() ?? "-",
-                        AccountId = reader.GetInt32("account_id"),
+                        AccountId = reader["account_id"] != DBNull.Value ? Convert.ToInt32(reader["account_id"]) : 0,
                         FaciltyName = reader["facilty_name"]?.ToString() ?? "-",
-                        ProjectId = reader.GetInt32("project_id"),
+                        ProjectId = reader["project_id"] != DBNull.Value ? Convert.ToInt32(reader["project_id"]) : 0,
                         ProjectSite = reader["project_site"]?.ToString() ?? "-",
                         //Debit = Convert.ToDecimal(reader["debit"]),
                         //Credit = Convert.ToDecimal(reader["credit"]),
                         Date = reader["date"] != DBNull.Value ? Convert.ToDateTime(reader["date"]) : (DateTime?)null,
-                        Active = reader.GetInt32("active")
+                        Active = reader["active"] != DBNull.Value ? Convert.ToInt32(reader["active"]) : 0,
                     });
                 }
 
