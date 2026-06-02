@@ -84,11 +84,11 @@ namespace YamyProject.Controllers
                         ) t ON t.hum_id = c.id
                         LEFT JOIN tbl_vendor_category tc ON c.Cat_id = tc.id WHERE c.type='Vendor'";
 
-                // Apply state filter
-                if (state == "Active Subcontractor")
-                    query += " AND c.active = 0";
-                else if (state == "Inactive Subcontractor")
-                    query += " AND c.active != 0";
+                //// Apply state filter
+                //if (state == "Active Subcontractor")
+                //    query += " AND c.active = 0";
+                //else if (state == "Inactive Subcontractor")
+                //    query += " AND c.active != 0";
 
                 await using var cmd = new MySqlCommand(query, conn);
                 await using var reader = await cmd.ExecuteReaderAsync();
@@ -120,7 +120,7 @@ namespace YamyProject.Controllers
                         Email = reader["email"]?.ToString() ?? "-",
                         TRN = reader["trn"]?.ToString() ?? "-",
                         Amount = Convert.ToDecimal(reader["Amount"]),
-                        Cat_id = reader.GetInt32("Cat_id"),
+                        Cat_id = reader["Cat_id"] != DBNull.Value ? Convert.ToInt32(reader["Cat_id"]) : 0,
                         Mobile = reader["mobile"]?.ToString() ?? "-",
                         CCMail = reader["ccemail"]?.ToString() ?? "-",
                         Website = reader["website"]?.ToString() ?? "-",
