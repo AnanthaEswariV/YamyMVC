@@ -950,8 +950,8 @@
         }
 
         // ===== Change Form Layout =====
-        function changeFormLayout() {
-            const type = $("#typeSelect").val().toLowerCase();
+              function changeFormLayout() {
+            const type = ($("#typeSelect").val() || "").toLowerCase();
 
             if (type.includes("service")) {
                 $("#inventorySection, #barcodeSection, #unitCostingSection, #minMaxSection").hide();
