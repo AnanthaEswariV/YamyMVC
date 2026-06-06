@@ -73,4 +73,35 @@
 
         public decimal Amount { get; set; }
     }
+    public class CustomerRequest
+    {
+        public int Id { get; set; }
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public int? CategoryId { get; set; }
+        public decimal? Debit { get; set; }
+        public decimal? Credit { get; set; }
+        public DateTime? OpeningBalanceDate { get; set; }
+
+        public string MainPhone { get; set; }
+        public string WorkPhone { get; set; }
+        public string Mobile { get; set; }
+        public string Email { get; set; }
+        public string CCEmail { get; set; }
+        public string Website { get; set; }
+
+        public int? CountryId { get; set; }
+        public int? CityId { get; set; }
+        public string Region { get; set; }
+        public string BuildingName { get; set; }
+        public int? AccountId { get; set; }
+        public string TRN { get; set; }
+        public string FacilityName { get; set; }
+
+        // ✅ FIX
+        public bool Active { get; set; }
+
+        // ✅ FIX: use int list
+        public List<int> ProjectSites { get; set; } = new();
+    }
 }

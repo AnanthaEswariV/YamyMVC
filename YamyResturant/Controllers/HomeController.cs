@@ -863,6 +863,265 @@ namespace YamyResturant.Controllers
             }
         }
 
+        [HttpPost]
+        public async Task<IActionResult> SaveCustomer([FromBody] CustomerRequest model)
+        {
+            if (model == null)
+                return Json(new { status = false, message = "Invalid request" });
+
+            // Basic validations
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return Json(new { status = false, message = "Please enter customer name" });
+
+            if (model.CategoryId == null || model.CategoryId <= 0)
+                return Json(new { status = false, message = "Please select customer category" });
+
+            if (model.CountryId == null || model.CountryId <= 0)
+                return Json(new { status = false, message = "Please select country" });
+
+            if (model.OpeningBalanceDate.HasValue &&
+    model.OpeningBalanceDate.Value.Date > DateTime.Now.Date)
+            {
+                return Json(new { status = false, message = "Opening balance date must be today or earlier" });
+            }
+
+            if (!string.IsNullOrWhiteSpace(model.TRN))
+            {
+                if (model.TRN.Length < 3 || model.TRN.Length > 15)
+                {
+                    return Json(new { status = false, message = "TRN must be between 3 and 15 characters" });
+                }
+            }
+
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Json(new { status = false, message = "User not logged in" });
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+            };
+
+            try
+            {
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check duplicate customer
+                var dupQuery = "SELECT id FROM tbl_customer WHERE name=@name";
+                using (var dupCmd = new MySqlCommand(dupQuery, conn))
+                {
+                    dupCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    var existingId = await dupCmd.ExecuteScalarAsync();
+                    if (existingId != null && (model.Id == 0 || Convert.ToInt32(existingId) != model.Id))
+                    {
+                        return Json(new { status = false, message = "Customer already exists. Enter another name." });
+                    }
+                }
+
+                string formattedCode = model.Code;
+                if (model.Id == 0) // Insert
+                {
+                    // Generate next customer code
+                    int lastCode = 0;
+                    var codeQuery = "SELECT MAX(CAST(code AS UNSIGNED)) FROM tbl_customer";
+                    using (var codeCmd = new MySqlCommand(codeQuery, conn))
+                    {
+                        var result = await codeCmd.ExecuteScalarAsync();
+                        if (result != DBNull.Value && result != null)
+                            lastCode = Convert.ToInt32(result);
+                    }
+                    formattedCode = (lastCode + 1).ToString("D5");
+
+                    // Insert customer
+                    var projectSite = string.Join(",", model.ProjectSites);
+                    var insertQuery = @"INSERT INTO tbl_customer 
+        (code, NAME, Cat_id, Balance, DATE, main_phone, work_phone, mobile, email, ccemail, website, 
+        country, city, region, building_name, account_id, trn, facilty_name, active, created_by, created_date, state, project_site)
+        VALUES(@code,@name,@cat_id,@balance,@date,@main_phone,@work_phone,@mobile,@email,@ccemail,@website,
+        @country,@city,@region,@building_name,@account_id,@trn,@facilty_name,@active,@created_by,@created_date,0,@project_site);
+        SELECT LAST_INSERT_ID();";
+
+                    using var insertCmd = new MySqlCommand(insertQuery, conn);
+                    insertCmd.Parameters.AddWithValue("@code", formattedCode);
+                    insertCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    insertCmd.Parameters.AddWithValue("@cat_id", model.CategoryId);
+                    decimal balance = (model.Debit ?? 0) - (model.Credit ?? 0);
+                    insertCmd.Parameters.AddWithValue("@balance", balance);
+                    insertCmd.Parameters.AddWithValue("@date", model.OpeningBalanceDate);
+                    insertCmd.Parameters.AddWithValue("@main_phone", model.MainPhone ?? "");
+                    insertCmd.Parameters.AddWithValue("@work_phone", model.WorkPhone ?? "");
+                    insertCmd.Parameters.AddWithValue("@mobile", model.Mobile ?? "");
+                    insertCmd.Parameters.AddWithValue("@email", model.Email ?? "");
+                    insertCmd.Parameters.AddWithValue("@ccemail", model.CCEmail ?? "");
+                    insertCmd.Parameters.AddWithValue("@website", model.Website ?? "");
+                    insertCmd.Parameters.AddWithValue("@country", model.CountryId);
+                    insertCmd.Parameters.AddWithValue("@city", model.CityId ?? 0);
+                    insertCmd.Parameters.AddWithValue("@region", model.Region ?? "");
+                    insertCmd.Parameters.AddWithValue("@building_name", model.BuildingName ?? "");
+                    insertCmd.Parameters.AddWithValue("@account_id", model.AccountId ?? 0);
+                    insertCmd.Parameters.AddWithValue("@trn", model.TRN ?? "");
+                    insertCmd.Parameters.AddWithValue("@facilty_name", model.FacilityName ?? "");
+                    insertCmd.Parameters.AddWithValue("@active", model.Active ? 0 : -1);
+                    insertCmd.Parameters.AddWithValue("@created_by", userId);
+                    insertCmd.Parameters.AddWithValue("@created_date", DateTime.Now);
+                    insertCmd.Parameters.AddWithValue("@project_site", projectSite);
+
+                    var customerId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
+
+                    // Process opening balance
+                    await ProcessOpeningBalanceAsync(conn, customerId, formattedCode, userId, model);
+
+                    return Json(new { status = true, message = "Customer added successfully", code = formattedCode });
+                }
+                else // Update
+                {
+
+                    var projectSite = string.Join(",", model.ProjectSites);
+                    var updateQuery = @"UPDATE tbl_customer SET 
+                            code=@code, NAME=@name, Cat_id=@cat_id, DATE=@date, main_phone=@main_phone,
+                            work_phone=@work_phone, mobile=@mobile, email=@email, ccemail=@ccemail, website=@website,
+                            country=@country, city=@city, region=@region,  project_site=@project_site,
+                            building_name=@building_name, account_id=@account_id, trn=@trn, facilty_name=@facilty_name,
+                            active=@active, Balance=@balance
+                        WHERE id=@id";
+
+                    using var updateCmd = new MySqlCommand(updateQuery, conn);
+                    updateCmd.Parameters.AddWithValue("@code", model.Code);
+                    updateCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    updateCmd.Parameters.AddWithValue("@cat_id", model.CategoryId);
+                    updateCmd.Parameters.AddWithValue("@date", model.OpeningBalanceDate);
+                    updateCmd.Parameters.AddWithValue("@main_phone", model.MainPhone ?? "");
+                    updateCmd.Parameters.AddWithValue("@work_phone", model.WorkPhone ?? "");
+                    updateCmd.Parameters.AddWithValue("@mobile", model.Mobile ?? "");
+                    updateCmd.Parameters.AddWithValue("@email", model.Email ?? "");
+                    updateCmd.Parameters.AddWithValue("@ccemail", model.CCEmail ?? "");
+                    updateCmd.Parameters.AddWithValue("@website", model.Website ?? "");
+                    updateCmd.Parameters.AddWithValue("@country", model.CountryId);
+                    updateCmd.Parameters.AddWithValue("@city", model.CityId ?? 0);
+                    updateCmd.Parameters.AddWithValue("@region", model.Region ?? "");
+                    updateCmd.Parameters.AddWithValue("@building_name", model.BuildingName ?? "");
+                    updateCmd.Parameters.AddWithValue("@account_id", model.AccountId ?? 0);
+                    updateCmd.Parameters.AddWithValue("@trn", model.TRN ?? "");
+                    updateCmd.Parameters.AddWithValue("@facilty_name", model.FacilityName ?? "");
+                    updateCmd.Parameters.AddWithValue("@active", model.Active ? 0 : -1);
+                    decimal balance = (model.Debit ?? 0) - (model.Credit ?? 0);
+                    updateCmd.Parameters.AddWithValue("@balance", balance);
+                    updateCmd.Parameters.AddWithValue("@project_site", projectSite);
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+
+                    int affected = await updateCmd.ExecuteNonQueryAsync();
+
+                    return Json(new { status = true, message = "Customer updated successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(500, new { status = false, message = ex.Message });
+            }
+        }
+        private async Task ProcessOpeningBalanceAsync(MySqlConnection conn, int customerId, string formattedCode, int userId, CustomerRequest model)
+        {
+            decimal debitAmount = model.Debit ?? 0;
+            decimal creditAmount = model.Credit ?? 0;
+            string accountId = model.AccountId?.ToString() ?? "0";
+
+            // Get Opening Balance Equity account ID
+            string openingBalanceEquity = await SelectDefaultLevelAccountAsync(conn, "Opening Balance Equity");
+            if (string.IsNullOrWhiteSpace(openingBalanceEquity) || openingBalanceEquity == "0")
+            {
+                var cmd = new MySqlCommand("SELECT id FROM tbl_coa_level_4 WHERE name='Opening Balance Equity'", conn);
+                var result = await cmd.ExecuteScalarAsync();
+                if (result != null && result != DBNull.Value)
+                    openingBalanceEquity = result.ToString();
+            }
+
+            if (string.IsNullOrWhiteSpace(openingBalanceEquity) || openingBalanceEquity == "0")
+                throw new Exception("Cannot make opening balance without Opening Balance Equity account");
+
+            DateTime transactionDate = model.OpeningBalanceDate ?? DateTime.Now;
+
+            // Mimic your synchronous logic
+
+            if (creditAmount != 0)
+            {
+                // Credit transaction: 
+                // 1) Opening Balance Equity - Debit = creditAmount, Credit=0
+                await AddTransactionEntryAsync(
+                    conn, transactionDate, openingBalanceEquity,
+                    creditAmount.ToString(), "0",
+                    customerId.ToString(), "0",
+                    "Customer Opening Balance", "OPENING BALANCE",
+                    $"Opening Balance Equity - Customer Code - {formattedCode}",
+                    userId, DateTime.Now, "");
+
+                // 2) Customer Account - Debit=0, Credit=creditAmount
+                await AddTransactionEntryAsync(
+                    conn, transactionDate, openingBalanceEquity,
+                    "0", creditAmount.ToString(),
+                    customerId.ToString(), customerId.ToString(),
+                    "Customer Opening Balance", "OPENING BALANCE",
+                    $"Opening Balance - Customer Code - {formattedCode}",
+                    userId, DateTime.Now, "");
+            }
+
+            if (debitAmount != 0)
+            {
+                // Debit transaction:
+                // 1) Opening Balance Equity - Debit=0, Credit=debitAmount
+                await AddTransactionEntryAsync(
+                    conn, transactionDate, openingBalanceEquity,
+                    "0", debitAmount.ToString(),
+                    customerId.ToString(), "0",
+                    "Customer Opening Balance", "OPENING BALANCE",
+                    $"Opening Balance Equity - Customer Code - {formattedCode}",
+                    userId, DateTime.Now, "");
+
+                // 2) Customer Account - Debit=debitAmount, Credit=0
+                await AddTransactionEntryAsync(
+                    conn, transactionDate, openingBalanceEquity,
+                    debitAmount.ToString(), "0",
+                    customerId.ToString(), customerId.ToString(),
+                    "Customer Opening Balance", "OPENING BALANCE",
+                    $"Opening Balance - Customer Code - {formattedCode}",
+                    userId, DateTime.Now, "");
+            }
+        }
+
+        public static async Task AddTransactionEntryAsync(MySqlConnection conn, DateTime date, string accountId, string debit, string credit,
+               string transactionId, string humId, string type, string voucherName, string description,
+               int createdBy, DateTime createdDate, string voucherNo)
+        {
+            var query = @"INSERT INTO tbl_transaction 
+            (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no) 
+            VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @type, @description, @createdBy, @createdDate, 0, @voucher_no)";
+
+            using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@accountId", accountId);
+            cmd.Parameters.AddWithValue("@debit", debit);
+            cmd.Parameters.AddWithValue("@credit", credit);
+            cmd.Parameters.AddWithValue("@transactionId", transactionId);
+            cmd.Parameters.AddWithValue("@hum_id", humId);
+            cmd.Parameters.AddWithValue("@tType", voucherName);
+            cmd.Parameters.AddWithValue("@type", type);
+            cmd.Parameters.AddWithValue("@description", description);
+            cmd.Parameters.AddWithValue("@createdBy", createdBy);
+            cmd.Parameters.AddWithValue("@createdDate", createdDate);
+            cmd.Parameters.AddWithValue("@voucher_no", voucherNo);
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        public static async Task<string> SelectDefaultLevelAccountAsync(MySqlConnection conn, string accountName)
+        {
+            var cmd = new MySqlCommand("SELECT id FROM tbl_coa_level_4 WHERE name=@name LIMIT 1", conn);
+            cmd.Parameters.AddWithValue("@name", accountName);
+            var result = await cmd.ExecuteScalarAsync();
+            return result?.ToString() ?? "0";
+        }
+
         #endregion
     }
 }
