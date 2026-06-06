@@ -7,6 +7,11 @@ namespace YamyProject.Controllers
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _config;
+        private readonly string _connectionString;
+        private readonly int _defaultDebitAccountId = 1;
+        private readonly int _defaultCreditAccountId = 1;
+        private readonly int _defaultUserId = 1;   // migration user
+        private readonly string _paymentType = "General";
         public AccountController(IHttpClientFactory httpClientFactory, IConfiguration config)
         {
             _httpClientFactory = httpClientFactory;
@@ -10691,5 +10696,298 @@ WHERE jd.inv_id = @voucherId";
 
         #endregion
 
+        #region Payment Voucher
+        public async Task ImportAsync(string csvFilePath)
+        {
+            var rows = ReadCsv(csvFilePath);
+            Console.WriteLine($"Total rows read: {rows.Count}");
+
+            int success = 0, skipped = 0, failed = 0;
+
+            foreach (var row in rows)
+            {
+                try
+                {
+
+                    var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                    {
+                        Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    };
+
+                    using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                    await conn.OpenAsync();
+                    using var transaction = await conn.BeginTransactionAsync();
+
+                    try
+                    {
+                        int voucherId = await InsertVoucherAsync(
+    conn,
+    transaction,
+    row);
+
+                        // 2. Insert tbl_transaction (debit + credit)
+                        string tType = "General Payment";
+                        await AddTransactionEntry(
+     conn,
+     transaction,
+     row.Date,
+     _defaultDebitAccountId.ToString(),
+     row.Amount,
+     0,
+     voucherId.ToString(),
+     "0",
+     "General Payment",
+     "General Payment",
+     $"Payment Voucher NO. {row.Code}",
+     _defaultUserId,
+     DateTime.Now,
+     row.Code);
+
+                        await AddTransactionEntry(conn, transaction,
+                            date: row.Date,
+                            accountId: _defaultCreditAccountId.ToString(),
+                            debit: 0,
+                            credit: row.Amount,
+                            transactionId: row.Id.ToString(),
+                            humId: "0",
+                            tType: tType,
+                            type: tType,
+                            description: $"Payment Voucher NO. {row.Code}",
+                            createdBy: _defaultUserId,
+                            createdDate: DateTime.Now,
+                            voucherNo: row.Code);
+
+                        // 3. Insert tbl_cost_center_transaction (debit + credit)
+                        await InsertCostCenterTransaction(conn, transaction,
+                            date: row.Date,
+                            debit: row.Amount,
+                            credit: 0,
+                            refId: row.Id.ToString(),
+                            type: "Payment",
+                            description: "Payment Debit Entry",
+                            costCenterId: "0");
+
+                        await InsertCostCenterTransaction(conn, transaction,
+                            date: row.Date,
+                            debit: 0,
+                            credit: row.Amount,
+                            refId: row.Id.ToString(),
+                            type: "Payment",
+                            description: "Payment Credit Entry",
+                            costCenterId: "0");
+
+                        await transaction.CommitAsync();
+                        success++;
+                        Console.WriteLine($"[OK]   id={row.Id}  code={row.Code}  amount={row.Amount}");
+                    }
+                    catch (Exception ex)
+                    {
+                        await transaction.RollbackAsync();
+                        failed++;
+                        Console.WriteLine($"[FAIL] id={row.Id}  code={row.Code}  => {ex.Message}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    Console.WriteLine($"[FAIL] id={row.Id} (connection error) => {ex.Message}");
+                }
+            }
+
+            Console.WriteLine("===========================================");
+            Console.WriteLine($"Done.  Success={success}  Skipped={skipped}  Failed={failed}");
+        }
+
+        private async Task<int> InsertVoucherAsync(
+      MySqlConnection conn,
+      MySqlTransaction transaction,
+      CsvRow row)
+        {
+            string method =
+                string.IsNullOrWhiteSpace(row.CheckNo)
+                    ? "Cash"
+                    : "Cheque";
+
+            string sql = @"
+        INSERT INTO tbl_payment_voucher
+        (
+            date,
+            code,
+            type,
+            method,
+            amount,
+            description,
+            debit_account_id,
+            credit_account_id,
+            debit_cost_center_id,
+            credit_cost_center_id,
+            check_no,
+            check_date,
+            created_by,
+            created_date,
+            state
+        )
+        VALUES
+        (
+            @date,
+            @code,
+            @type,
+            @method,
+            @amount,
+            @description,
+            @debitAccountId,
+            @creditAccountId,
+            0,
+            0,
+            @checkNo,
+            @checkDate,
+            @createdBy,
+            NOW(),
+            0
+        );
+
+        SELECT LAST_INSERT_ID();";
+
+            using var cmd =
+                new MySqlCommand(sql, conn, transaction);
+
+            cmd.Parameters.AddWithValue("@date", row.Date);
+            cmd.Parameters.AddWithValue("@code", row.Code);
+            cmd.Parameters.AddWithValue("@type", _paymentType);
+            cmd.Parameters.AddWithValue("@method", method);
+            cmd.Parameters.AddWithValue("@amount", row.Amount);
+            cmd.Parameters.AddWithValue("@description", row.Description);
+            cmd.Parameters.AddWithValue("@debitAccountId", _defaultDebitAccountId);
+            cmd.Parameters.AddWithValue("@creditAccountId", _defaultCreditAccountId);
+            cmd.Parameters.AddWithValue("@checkNo", row.CheckNo ?? "");
+            cmd.Parameters.AddWithValue("@checkDate",
+                row.CheckDate.HasValue
+                    ? row.CheckDate.Value
+                    : DBNull.Value);
+            cmd.Parameters.AddWithValue("@createdBy", _defaultUserId);
+
+            return Convert.ToInt32(
+                await cmd.ExecuteScalarAsync());
+        }
+
+        private List<CsvRow> ReadCsv(string filePath)
+        {
+            var rows = new List<CsvRow>();
+            var lines = System.IO.File.ReadAllLines(filePath);
+
+            foreach (var line in lines)
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+
+                var cols = line.Split(',');
+
+                if (cols.Length < 6)
+                    continue;
+
+                if (!int.TryParse(cols[0].Trim(), out int id))
+                    continue;
+
+                if (!DateTime.TryParse(cols[1].Trim(), out DateTime date))
+                    continue;
+
+                string code = cols[2].Trim();
+
+                if (!decimal.TryParse(
+                        cols[5].Trim(),
+                        NumberStyles.Any,
+                        CultureInfo.InvariantCulture,
+                        out decimal amount))
+                    continue;
+
+                string description = cols.Length > 8 ? cols[8].Trim() : "";
+
+                string checkNo = cols.Length > 15 ? cols[15].Trim() : "";
+                if (checkNo.Equals("NULL", StringComparison.OrdinalIgnoreCase))
+                    checkNo = "";
+
+                DateTime? checkDate = null;
+                if (cols.Length > 16 &&
+                    !cols[16].Trim().Equals("NULL", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (DateTime.TryParse(cols[16].Trim(), out DateTime cd))
+                        checkDate = cd;
+                }
+
+                rows.Add(new CsvRow
+                {
+                    Id = id,
+                    Date = date,
+                    Code = code,
+                    Amount = amount,
+                    Description = description,
+                    CheckNo = checkNo,
+                    CheckDate = checkDate
+                });
+            }
+
+            return rows;
+        }
+
+        private class CsvRow
+        {
+            public int Id { get; set; }
+            public DateTime Date { get; set; }
+            public string Code { get; set; } = "";
+            public decimal Amount { get; set; }
+            public string Description { get; set; } = "";
+            public string CheckNo { get; set; } = "";
+            public DateTime? CheckDate { get; set; }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ImportPaymentVoucher(IFormFile file)
+        {
+            try
+            {
+                if (file == null || file.Length == 0)
+                    return BadRequest(new
+                    {
+                        status = false,
+                        message = "Please select a file."
+                    });
+
+                var uploadPath = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "Uploads",
+                    file.FileName);
+
+                Directory.CreateDirectory(
+                    Path.Combine(Directory.GetCurrentDirectory(), "Uploads"));
+
+                using (var stream = new FileStream(uploadPath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                // Call existing method
+                await ImportAsync(uploadPath);
+
+                return Ok(new
+                {
+                    status = true,
+                    message = "Import completed successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+
+        #endregion
+
+
     }
+
 }
+

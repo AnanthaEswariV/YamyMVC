@@ -36,6 +36,10 @@
                 data-bs-target="#paymentVoucherModal">
             <i class="fas fa-plus me-1"></i> New PV
         </button>
+       @*  <input type="file" id="excelFile" class="form-control" />
+        <button type="button" id="btnImport" class="btn btn-primary">
+            Import Payment Voucher
+        </button> *@
     </div>
     <div class="card-body">
         <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
@@ -47,6 +51,7 @@
                     <option value="Vendor" selected>Vendor</option>
                     <option value="Employee">Employee</option>
                     <option value="Petty Cash">Petty Cash</option>
+                    <option value="General">General Voucher</option>
                 </select>
             </div>
 
@@ -329,6 +334,65 @@
     <script>
         $(document).ready(function () {
 
+
+                    $('#btnImport').click(function () {
+
+            var fileInput = $('#excelFile')[0];
+
+            if (fileInput.files.length === 0) {
+                toastr.warning('Please select a file');
+                return;
+            }
+
+            var formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            $.ajax({
+                  url: '@Url.Action("ImportPaymentVoucher", "Account")',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+
+                beforeSend: function () {
+                    $('#btnImport')
+                        .prop('disabled', true)
+                        .text('Importing...');
+                },
+
+                success: function (res) {
+
+                    if (res.status) {
+
+                        toastr.success(res.message);
+
+                        console.log(res);
+
+                        // Reload voucher list
+                        loadPaymentVoucher();
+                    }
+                    else {
+                        toastr.error(res.message);
+                    }
+                },
+
+                error: function (xhr) {
+
+                    toastr.error(
+                        xhr.responseJSON?.message ||
+                        'Import failed'
+                    );
+                },
+
+                complete: function () {
+
+                    $('#btnImport')
+                        .prop('disabled', false)
+                        .text('Import Payment Voucher');
+                }
+            });
+
+        });
             // ============================================================
             // HELPER
             // ============================================================
