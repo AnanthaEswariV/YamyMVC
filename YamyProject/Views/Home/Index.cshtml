@@ -4,8 +4,8 @@
 @{
     ViewData["Title"] = "Accounting Dashboard";
     string Fmt(decimal v) => v < 0
-        ? $"-${Math.Abs(v).ToString("N2", CultureInfo.InvariantCulture)}"
-        : v.ToString("N2", CultureInfo.InvariantCulture);
+    ? $"-AED {Math.Abs(v).ToString("N2", CultureInfo.InvariantCulture)}"
+    : $"AED {v.ToString("N2", CultureInfo.InvariantCulture)}";
 
     var selectedYear = Model.SelectedYear > 0 ? Model.SelectedYear : DateTime.Now.Year;
     var currentYear  = DateTime.Now.Year;
@@ -148,7 +148,7 @@
                     {
                         <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                             <span style="font-size:.9rem">@label</span>
-                            <span class="fw-semibold @(isNeg ? "text-danger" : "")">$@val</span>
+                            <span class="fw-semibold @(isNeg ? "text-danger" : "")">@val</span>
                         </div>
                     }
 
@@ -224,7 +224,7 @@
                                         </td>
                                         <td class="text-end fw-semibold
                                             @(tx.TxType == "Income" ? "text-success" : "text-danger")">
-                                            $@Fmt(tx.Amount)
+                                            @Fmt(tx.Amount)
                                         </td>
                                     </tr>
                                 }
@@ -330,9 +330,9 @@
                         },
                         tooltip: {
                             callbacks: {
-                                label: ctx =>
-                                    ` ${ctx.dataset.label}: $${Number(ctx.parsed.y)
-                                        .toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                                  label: ctx =>
+        ` ${ctx.dataset.label}: AED ${Number(ctx.parsed.y)
+            .toLocaleString('en-AE', { minimumFractionDigits: 2 })}`
                             }
                         }
                     },
@@ -340,7 +340,9 @@
                         x: { grid: { display: false } },
                         y: {
                             beginAtZero: true,
-                            ticks: { callback: v => '$' + Number(v).toLocaleString() }
+                                   ticks: {
+            callback: v => 'AED ' + Number(v).toLocaleString('en-AE')
+        }
                         }
                     }
                 }
