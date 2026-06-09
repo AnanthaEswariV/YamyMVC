@@ -4,208 +4,84 @@
 @{
     ViewData["Title"] = "Accounting Dashboard";
     string Fmt(decimal v) => v < 0
-        ? $"-{Math.Abs(v).ToString("N2", CultureInfo.InvariantCulture)}"
+        ? $"-${Math.Abs(v).ToString("N2", CultureInfo.InvariantCulture)}"
         : v.ToString("N2", CultureInfo.InvariantCulture);
 
-    // Serialise chart data safely for inline JS
+    var selectedYear = Model.SelectedYear > 0 ? Model.SelectedYear : DateTime.Now.Year;
+    var currentYear  = DateTime.Now.Year;
+    var yearRange    = Enumerable.Range(currentYear - 5, 6).Reverse();
 
-    var labels = JsonSerializer.Serialize(Model.MonthlyData.Select(m => DateTime.Parse(m.Month).ToString("MMM", new CultureInfo("en-US"))));
-    var incomes = JsonSerializer.Serialize(Model.MonthlyData.Select(m => m.Income));
+    var labels   = JsonSerializer.Serialize(Model.MonthlyData.Select(m => m.Month));
+    var incomes  = JsonSerializer.Serialize(Model.MonthlyData.Select(m => m.Income));
     var expenses = JsonSerializer.Serialize(Model.MonthlyData.Select(m => m.Expense));
 }
 
-<style>
-    :root {
-        --c-bg: #f4f6fb;
-        --c-card: #ffffff;
-        --c-border: #e6eaf3;
-        --c-text: #1c2340;
-        --c-muted: #7b8aab;
-        --c-green: #22c55e;
-        --c-red: #ef4444;
-        --c-blue: #3b82f6;
-        --c-orange: #f97316;
-        --c-purple: #8b5cf6;
-        --shadow-sm: 0 1px 4px rgba(0,0,0,.07);
-        --shadow-md: 0 4px 16px rgba(0,0,0,.09);
-        --radius: 12px;
-    }
-
-    body {
-        background: var(--c-bg);
-        color: var(--c-text);
-        font-family: 'Segoe UI', sans-serif;
-    }
-
-    .dash-card {
-        background: var(--c-card);
-        border: 1px solid var(--c-border);
-        border-radius: var(--radius);
-        box-shadow: var(--shadow-sm);
-        transition: box-shadow .2s;
-    }
-
-        .dash-card:hover {
-            box-shadow: var(--shadow-md);
-        }
-
-    .kpi-icon {
-        width: 46px;
-        height: 46px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 22px;
-    }
-
-    .kpi-label {
-        font-size: .75rem;
-        color: var(--c-muted);
-        letter-spacing: .05em;
-        text-transform: uppercase;
-    }
-
-    .kpi-value {
-        font-size: 1.35rem;
-        font-weight: 700;
-    }
-
-    .section-title {
-        font-size: .8rem;
-        font-weight: 600;
-        letter-spacing: .08em;
-        text-transform: uppercase;
-        color: var(--c-muted);
-        border-bottom: 1px solid var(--c-border);
-        padding-bottom: 8px;
-        margin-bottom: 16px;
-    }
-
-    .acct-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 0;
-        border-bottom: 1px solid var(--c-border);
-    }
-
-        .acct-row:last-child {
-            border-bottom: none;
-        }
-
-    .acct-name {
-        font-size: .9rem;
-    }
-
-    .acct-val {
-        font-size: .95rem;
-        font-weight: 600;
-    }
-
-    .neg {
-        color: var(--c-red);
-    }
-
-    .tx-table th {
-        font-size: .75rem;
-        text-transform: uppercase;
-        letter-spacing: .06em;
-        color: var(--c-muted);
-        font-weight: 600;
-    }
-
-    .tx-table td {
-        font-size: .88rem;
-        vertical-align: middle;
-    }
-
-    .tx-table tr {
-        border-color: var(--c-border);
-    }
-
-    .qa-btn {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 11px 16px;
-        border-radius: 9px;
-        border: none;
-        width: 100%;
-        font-size: .88rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: filter .15s, transform .1s;
-    }
-
-        .qa-btn:hover {
-            filter: brightness(.92);
-            transform: translateY(-1px);
-        }
-
-        .qa-btn:active {
-            transform: translateY(0);
-        }
-
-        .qa-btn .icon {
-            width: 30px;
-            height: 30px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-        }
-</style>
-
 <div class="container-fluid p-4">
 
-    <div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
         <div>
             <h4 class="mb-0 fw-bold">Accounting Dashboard</h4>
             <span class="text-muted" style="font-size:.82rem">
-                Year-to-date as of @DateTime.Now.ToString("dd MMM yyyy", new System.Globalization.CultureInfo("en-US")).
+                Year-to-date as of @DateTime.Now.ToString("dd MMM yyyy", new CultureInfo("en-US"))
             </span>
         </div>
-        <span class="badge bg-primary-subtle text-primary px-3 py-2" style="font-size:.8rem">
-            @DateTime.Now.Year Financial Year
-        </span>
+
+
+        <form method="get" asp-action="Index" class="d-flex align-items-center gap-2 mb-0">
+            <label class="form-label mb-0 text-muted fw-semibold" style="font-size:.82rem">
+                Financial Year
+            </label>
+            <select name="year" class="form-select form-select-sm" style="width:auto"
+                    onchange="this.form.submit()">
+                @foreach (var y in yearRange)
+                {
+                    if (y == selectedYear)
+                    {
+                        <option value="@y" selected>@y</option>
+                    }
+                    else
+                    {
+                        <option value="@y">@y</option>
+                    }
+                }
+            </select>
+        </form>
     </div>
 
-    <div class="row g-3 mb-4">
+
+@*   <div class="row g-3 mb-4">
 
         <div class="col-6 col-lg-3">
-            <div class="dash-card p-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="kpi-icon" style="background:#dcfce7">💰</div>
+            <div class="card border rounded-3 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3 py-3">
+                    <div class="rounded-3 p-2 bg-success-subtle fs-4">💰</div>
                     <div>
-                        <div class="kpi-label">Total Income</div>
-                        <div class="kpi-value" style="color:var(--c-green)">$@Fmt(Model.TotalIncome)</div>
+                        <div class="text-muted text-uppercase fw-semibold" style="font-size:.72rem;letter-spacing:.05em">Total Income</div>
+                        <div class="fw-bold text-success fs-5">$@Fmt(Model.TotalIncome)</div>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="col-6 col-lg-3">
-            <div class="dash-card p-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="kpi-icon" style="background:#fee2e2">💸</div>
+            <div class="card border rounded-3 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3 py-3">
+                    <div class="rounded-3 p-2 bg-danger-subtle fs-4">💸</div>
                     <div>
-                        <div class="kpi-label">Total Expenses</div>
-                        <div class="kpi-value" style="color:var(--c-red)">$@Fmt(Model.TotalExpenses)</div>
+                        <div class="text-muted text-uppercase fw-semibold" style="font-size:.72rem;letter-spacing:.05em">Total Expenses</div>
+                        <div class="fw-bold text-danger fs-5">$@Fmt(Model.TotalExpenses)</div>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="col-6 col-lg-3">
-            <div class="dash-card p-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="kpi-icon" style="background:#dbeafe">🏦</div>
+            <div class="card border rounded-3 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3 py-3">
+                    <div class="rounded-3 p-2 bg-primary-subtle fs-4">🏦</div>
                     <div>
-                        <div class="kpi-label">Net Balance</div>
-                        <div class="kpi-value @(Model.CurrentBalance < 0 ? "neg" : "")"
-                             style="color:var(--c-blue)">
+                        <div class="text-muted text-uppercase fw-semibold" style="font-size:.72rem;letter-spacing:.05em">Net Balance</div>
+                        <div class="fw-bold fs-5 @(Model.CurrentBalance < 0 ? "text-danger" : "text-primary")">
                             $@Fmt(Model.CurrentBalance)
                         </div>
                     </div>
@@ -214,163 +90,198 @@
         </div>
 
         <div class="col-6 col-lg-3">
-            <div class="dash-card p-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="kpi-icon" style="background:#ffedd5">💳</div>
+            <div class="card border rounded-3 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3 py-3">
+                    <div class="rounded-3 p-2 bg-warning-subtle fs-4">💳</div>
                     <div>
-                        <div class="kpi-label">Petty Cash</div>
-                        <div class="kpi-value" style="color:var(--c-orange)">$@Fmt(Model.PettyCash)</div>
+                        <div class="text-muted text-uppercase fw-semibold" style="font-size:.72rem;letter-spacing:.05em">Petty Cash</div>
+                        <div class="fw-bold text-warning fs-5">$@Fmt(Model.PettyCash)</div>
                     </div>
                 </div>
             </div>
         </div>
 
-    </div>
+    </div> *@
+
 
     <div class="row g-3 mb-4">
 
         <div class="col-lg-8">
-            <div class="dash-card p-4 h-100">
-                <div class="section-title">Monthly Income vs Expense</div>
-                <div style="position:relative; height:230px">
-                    <canvas id="monthlyChart"></canvas>
+            <div class="card border rounded-3 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-muted text-uppercase fw-semibold"
+                              style="font-size:.78rem;letter-spacing:.07em">
+                            Monthly Income vs Expense
+                        </span>
+                        <span class="badge bg-secondary-subtle text-secondary">@selectedYear</span>
+                    </div>
+                    <div style="position:relative;height:230px">
+                        <canvas id="monthlyChart"
+                                role="img"
+                                aria-label="Bar chart of monthly income vs expenses for @selectedYear">
+                        </canvas>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="col-lg-4">
-            <div class="dash-card p-4 h-100">
-                <div class="section-title">Account Overview</div>
-
-                <div class="acct-row">
-                    <span class="acct-name">💵 Cash in Hand</span>
-                    <span class="acct-val">$@Fmt(Model.CashInHand)</span>
-                </div>
-                <div class="acct-row">
-                    <span class="acct-name">🏦 Bank Accounts</span>
-                    <span class="acct-val">$@Fmt(Model.BankBalance)</span>
-                </div>
-                <div class="acct-row">
-                    <span class="acct-name">💳 Credit (Payable)</span>
-                    <span class="acct-val @(Model.CreditBalance < 0 ? "neg" : "")">
-                        $@Fmt(Model.CreditBalance)
-                    </span>
-                </div>
-                <div class="acct-row">
-                    <span class="acct-name">🧾 Receivables</span>
-                    <span class="acct-val">$@Fmt(Model.Receivables)</span>
-                </div>
-
-                @if (Model.TotalIncome > 0)
-                {
-                    var pct = Math.Min(100, (double)Model.TotalExpenses / (double)Model.TotalIncome * 100);
-                    <div class="mt-4">
-                        <div class="d-flex justify-content-between mb-1" style="font-size:.75rem; color:var(--c-muted)">
-                            <span>Expense Ratio</span>
-                            <span>@pct.ToString("N1")%</span>
-                        </div>
-                        <div class="progress" style="height:6px; border-radius:4px">
-                            <div class="progress-bar @(pct > 80 ? "bg-danger" : "bg-success")"
-                                 style="width:@pct.ToString("N1")%"></div>
-                        </div>
+            <div class="card border rounded-3 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="text-muted text-uppercase fw-semibold mb-3 pb-2 border-bottom"
+                         style="font-size:.78rem;letter-spacing:.07em">
+                        Account Overview
                     </div>
-                }
+
+                    @{
+                        var acctRows = new[]
+                        {
+                            ("💵 Cash in Hand",    Fmt(Model.CashInHand),   false),
+                            ("🏦 Bank Accounts",   Fmt(Model.BankBalance),  false),
+                            ("💳 Credit (Payable)", Fmt(Model.CreditBalance), Model.CreditBalance < 0),
+                            ("🧾 Receivables",     Fmt(Model.Receivables),  false),
+                        };
+                    }
+
+                    @foreach (var (label, val, isNeg) in acctRows)
+                    {
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <span style="font-size:.9rem">@label</span>
+                            <span class="fw-semibold @(isNeg ? "text-danger" : "")">$@val</span>
+                        </div>
+                    }
+
+                    @if (Model.TotalIncome > 0)
+                    {
+                        var pct = Math.Min(100, (double)Model.TotalExpenses / (double)Model.TotalIncome * 100);
+                        <div class="mt-3">
+                            <div class="d-flex justify-content-between mb-1 text-muted" style="font-size:.75rem">
+                                <span>Expense Ratio</span>
+                                <span>@pct.ToString("N1")%</span>
+                            </div>
+                            <div class="progress" style="height:5px;border-radius:3px">
+                                <div class="progress-bar @(pct > 80 ? "bg-danger" : "bg-success")"
+                                     style="width:@pct.ToString("N1", CultureInfo.InvariantCulture)%">
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
             </div>
         </div>
 
     </div>
 
+
     <div class="row g-3">
 
         <div class="col-lg-8">
-            <div class="dash-card p-4">
-                <div class="section-title">Recent Transactions</div>
-                <table class="table tx-table table-hover mb-2">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Voucher</th>
-                            <th>Description</th>
-                            <th>Type</th>
-                            <th class="text-end">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (!Model.RecentTransactions.Any())
-                        {
-                            <tr>
-                                <td colspan="5" class="text-center py-3 text-muted">
-                                    No transactions found.
-                                </td>
-                            </tr>
-                        }
-                        @foreach (var tx in Model.RecentTransactions)
-                        {
-                            <tr>
-                                <td class="text-nowrap">@tx.Date.ToString("dd MMM yyyy")</td>
-                                <td><code style="font-size:.78rem">@tx.VoucherCode</code></td>
-                                <td>
-                                    @(tx.Description.Length > 35
-                                                                    ? tx.Description[..35] + "…"
-                                                                    : tx.Description)
-                            </td>
-                            <td>
-                                <span class="badge @tx.BadgeClass">@tx.TxType</span>
-                            </td>
-                            <td class="text-end fw-semibold">$@Fmt(tx.Amount)</td>
-                        </tr>
-                                                }
-                    </tbody>
-                </table>
-                <div class="d-flex gap-2 justify-content-end">
-                    <a asp-controller="Account" asp-action="PaymentVoucher"
-                       class="btn btn-sm btn-outline-secondary">View Payments</a>
-                    <a asp-controller="Account" asp-action="ReceiptVoucher"
-                       class="btn btn-sm btn-outline-secondary">View Receipts</a>
+            <div class="card border rounded-3 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="text-muted text-uppercase fw-semibold mb-3 pb-2 border-bottom"
+                         style="font-size:.78rem;letter-spacing:.07em">
+                        Recent Transactions
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-2" style="font-size:.87rem">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-muted fw-semibold text-uppercase" style="font-size:.72rem;letter-spacing:.06em">Date</th>
+                                    <th class="text-muted fw-semibold text-uppercase" style="font-size:.72rem;letter-spacing:.06em">Voucher</th>
+                                    <th class="text-muted fw-semibold text-uppercase" style="font-size:.72rem;letter-spacing:.06em">Description</th>
+                                    <th class="text-muted fw-semibold text-uppercase" style="font-size:.72rem;letter-spacing:.06em">Type</th>
+                                    <th class="text-muted fw-semibold text-uppercase text-end" style="font-size:.72rem;letter-spacing:.06em">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!Model.RecentTransactions.Any())
+                                {
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted">
+                                            No transactions found for @selectedYear.
+                                        </td>
+                                    </tr>
+                                }
+                                @foreach (var tx in Model.RecentTransactions)
+                                {
+                                    <tr>
+                                        <td class="text-nowrap text-muted" style="font-size:.82rem">
+                                            @tx.Date.ToString("dd MMM yyyy")
+                                        </td>
+                                        <td>
+                                            <code class="bg-light px-2 py-1 rounded" style="font-size:.75rem">
+                                                @tx.VoucherCode
+                                            </code>
+                                        </td>
+                                        <td>
+                                            @(tx.Description.Length > 35
+                                                ? tx.Description[..35] + "…"
+                                                : tx.Description)
+                                        </td>
+                                        <td>
+                                            <span class="badge @tx.BadgeClass">@tx.TxType</span>
+                                        </td>
+                                        <td class="text-end fw-semibold
+                                            @(tx.TxType == "Income" ? "text-success" : "text-danger")">
+                                            $@Fmt(tx.Amount)
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex gap-2 justify-content-end mt-1">
+                        <a asp-controller="Account" asp-action="PaymentVoucher"
+                           class="btn btn-sm btn-outline-secondary">View Payments</a>
+                        <a asp-controller="Account" asp-action="ReceiptVoucher"
+                           class="btn btn-sm btn-outline-secondary">View Receipts</a>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="col-lg-4">
-            <div class="dash-card p-4">
-                <div class="section-title">Quick Actions</div>
-                <div class="d-flex flex-column gap-2">
+            <div class="card border rounded-3 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="text-muted text-uppercase fw-semibold mb-3 pb-2 border-bottom"
+                         style="font-size:.78rem;letter-spacing:.07em">
+                        Quick Actions
+                    </div>
+                    <div class="d-flex flex-column gap-2">
 
-                    <a asp-controller="Account" asp-action="ReceiptVoucher"
-                       class="qa-btn text-decoration-none"
-                       style="background:#dcfce7; color:#15803d">
-                        <span class="icon" style="background:#bbf7d0">💰</span>
-                        Add Income (Receipt)
-                    </a>
+                        <a asp-controller="Account" asp-action="ReceiptVoucher"
+                           class="btn btn-success btn-sm d-flex align-items-center gap-2 text-start py-2 px-3">
+                            <span class="bg-white bg-opacity-25 rounded p-1 lh-1">💰</span>
+                            Add Income (Receipt)
+                        </a>
 
-                    <a asp-controller="Account" asp-action="PaymentVoucher"
-                       class="qa-btn text-decoration-none"
-                       style="background:#fee2e2; color:#b91c1c">
-                        <span class="icon" style="background:#fecaca">💸</span>
-                        Add Expense (Payment)
-                    </a>
+                        <a asp-controller="Account" asp-action="PaymentVoucher"
+                           class="btn btn-danger btn-sm d-flex align-items-center gap-2 text-start py-2 px-3">
+                            <span class="bg-white bg-opacity-25 rounded p-1 lh-1">💸</span>
+                            Add Expense (Payment)
+                        </a>
 
-                    <a asp-controller="Account" asp-action="GJVoucher"
-                       class="qa-btn text-decoration-none"
-                       style="background:#dbeafe; color:#1d4ed8">
-                        <span class="icon" style="background:#bfdbfe">📋</span>
-                        Journal Voucher
-                    </a>
+                        <a asp-controller="Account" asp-action="GJVoucher"
+                           class="btn btn-primary btn-sm d-flex align-items-center gap-2 text-start py-2 px-3">
+                            <span class="bg-white bg-opacity-25 rounded p-1 lh-1">📋</span>
+                            Journal Voucher
+                        </a>
 
-                    <a asp-controller="Account" asp-action="BankCenter"
-                       class="qa-btn text-decoration-none"
-                       style="background:#f3e8ff; color:#7e22ce">
-                        <span class="icon" style="background:#e9d5ff">🏦</span>
-                        Bank Center
-                    </a>
+                        <a asp-controller="Account" asp-action="BankCenter"
+                           class="btn btn-purple btn-sm d-flex align-items-center gap-2 text-start py-2 px-3"
+                           style="background:#7c3aed;border-color:#7c3aed;color:#fff">
+                            <span class="bg-white bg-opacity-25 rounded p-1 lh-1">🏦</span>
+                            Bank Center
+                        </a>
 
-                    <a href="#"
-                       class="qa-btn text-decoration-none"
-                       style="background:#f1f5f9; color:#475569">
-                        <span class="icon" style="background:#e2e8f0">📊</span>
-                        Generate Report
-                    </a>
+                        <a href="#"
+                           class="btn btn-secondary btn-sm d-flex align-items-center gap-2 text-start py-2 px-3">
+                            <span class="bg-white bg-opacity-25 rounded p-1 lh-1">📊</span>
+                            Generate Report
+                        </a>
 
+                    </div>
                 </div>
             </div>
         </div>
@@ -386,9 +297,7 @@
             const incomes  = @Html.Raw(incomes);
             const expenses = @Html.Raw(expenses);
 
-            const ctx = document.getElementById('monthlyChart').getContext('2d');
-
-            new Chart(ctx, {
+            new Chart(document.getElementById('monthlyChart'), {
                 type: 'bar',
                 data: {
                     labels,
@@ -397,15 +306,17 @@
                             label: 'Income',
                             data: incomes,
                             backgroundColor: 'rgba(34,197,94,.75)',
-                            borderRadius: 6,
-                            borderSkipped: false
+                            borderRadius: 5,
+                            borderSkipped: false,
+                            barPercentage: 0.65
                         },
                         {
                             label: 'Expense',
                             data: expenses,
                             backgroundColor: 'rgba(239,68,68,.75)',
-                            borderRadius: 6,
-                            borderSkipped: false
+                            borderRadius: 5,
+                            borderSkipped: false,
+                            barPercentage: 0.65
                         }
                     ]
                 },
@@ -413,11 +324,15 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'top', labels: { font: { size: 12 } } },
+                        legend: {
+                            position: 'top',
+                            labels: { font: { size: 11 }, boxWidth: 12, boxHeight: 12 }
+                        },
                         tooltip: {
                             callbacks: {
                                 label: ctx =>
-                                    ` ${ctx.dataset.label}: $${Number(ctx.parsed.y).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                                    ` ${ctx.dataset.label}: $${Number(ctx.parsed.y)
+                                        .toLocaleString('en-US', { minimumFractionDigits: 2 })}`
                             }
                         }
                     },
@@ -425,9 +340,7 @@
                         x: { grid: { display: false } },
                         y: {
                             beginAtZero: true,
-                            ticks: {
-                                callback: v => '$' + Number(v).toLocaleString()
-                            }
+                            ticks: { callback: v => '$' + Number(v).toLocaleString() }
                         }
                     }
                 }

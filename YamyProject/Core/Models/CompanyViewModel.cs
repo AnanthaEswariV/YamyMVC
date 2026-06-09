@@ -92,6 +92,24 @@ namespace YamyProject.Core.Models
         public string? CustomerCode { get; set; }
         public byte[]? StampComp { get; set; }
     }
+
+    // AccountingDashboardViewModel.cs
+    public class AccountingDashboardViewModel
+    {
+        public int SelectedYear { get; set; }  
+
+        public decimal TotalIncome { get; set; }
+        public decimal TotalExpenses { get; set; }
+        public decimal CurrentBalance { get; set; }
+        public decimal PettyCash { get; set; }
+        public decimal CashInHand { get; set; }
+        public decimal BankBalance { get; set; }
+        public decimal CreditBalance { get; set; }
+        public decimal Receivables { get; set; }
+
+        public List<MonthlyChartItem> MonthlyData { get; set; } = new();
+        public List<DashboardTransaction> RecentTransactions { get; set; } = new();
+    }
     public class UserResponse
     {
         public int Id { get; set; }
@@ -1927,27 +1945,6 @@ namespace YamyProject.Core.Models
         public decimal DebitTotal { get; set; }
         public decimal CreditTotal { get; set; }
         public List<JournalVoucherDetailRequest> Details { get; set; }
-    }
-
-    public class AccountingDashboardViewModel
-    {
-        // ── Summary Cards ──────────────────────────────────────
-        public decimal TotalIncome { get; set; }
-        public decimal TotalExpenses { get; set; }
-        public decimal CurrentBalance => TotalIncome - TotalExpenses;
-        public decimal PettyCash { get; set; }
-
-        // ── Account Overview ───────────────────────────────────
-        public decimal CashInHand { get; set; }  // Petty Cash level-3
-        public decimal BankBalance { get; set; }  // Banks level-3
-        public decimal CreditBalance { get; set; }  // Suppliers level-3 (payable)
-        public decimal Receivables { get; set; }  // Accounts Receivable level-3
-
-        // ── Monthly Chart (last 6 months) ──────────────────────
-        public List<MonthlyChartItem> MonthlyData { get; set; } = new();
-
-        // ── Recent Transactions (last 10) ──────────────────────
-        public List<DashboardTransaction> RecentTransactions { get; set; } = new();
     }
 
     public class MonthlyChartItem

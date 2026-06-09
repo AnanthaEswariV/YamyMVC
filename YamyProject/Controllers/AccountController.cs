@@ -10696,7 +10696,301 @@ WHERE jd.inv_id = @voucherId";
 
         #endregion
 
-        #region Payment Voucher
+        //    #region Payment Voucher
+        //    public async Task ImportAsync(string csvFilePath)
+        //    {
+        //        var rows = ReadCsv(csvFilePath);
+        //        Console.WriteLine($"Total rows read: {rows.Count}");
+
+        //        int success = 0, skipped = 0, failed = 0;
+
+        //        foreach (var row in rows)
+        //        {
+        //            try
+        //            {
+
+        //                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+        //                {
+        //                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+        //                };
+
+        //                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+        //                await conn.OpenAsync();
+        //                using var transaction = await conn.BeginTransactionAsync();
+
+        //                try
+        //                {
+        //                    int voucherId = await InsertVoucherAsync(
+        //conn,
+        //transaction,
+        //row);
+
+        //                    // 2. Insert tbl_transaction (debit + credit)
+        //                    string tType = "General Payment";
+        //                    await AddTransactionEntry(
+        // conn,
+        // transaction,
+        // row.Date,
+        // _defaultDebitAccountId.ToString(),
+        // row.Amount,
+        // 0,
+        // voucherId.ToString(),
+        // "0",
+        // "General Payment",
+        // "General Payment",
+        // $"Payment Voucher NO. {row.Code}",
+        // _defaultUserId,
+        // DateTime.Now,
+        // row.Code);
+
+        //                    await AddTransactionEntry(conn, transaction,
+        //                        date: row.Date,
+        //                        accountId: _defaultCreditAccountId.ToString(),
+        //                        debit: 0,
+        //                        credit: row.Amount,
+        //                        transactionId: row.Id.ToString(),
+        //                        humId: "0",
+        //                        tType: tType,
+        //                        type: tType,
+        //                        description: $"Payment Voucher NO. {row.Code}",
+        //                        createdBy: _defaultUserId,
+        //                        createdDate: DateTime.Now,
+        //                        voucherNo: row.Code);
+
+        //                    // 3. Insert tbl_cost_center_transaction (debit + credit)
+        //                    await InsertCostCenterTransaction(conn, transaction,
+        //                        date: row.Date,
+        //                        debit: row.Amount,
+        //                        credit: 0,
+        //                        refId: row.Id.ToString(),
+        //                        type: "Payment",
+        //                        description: "Payment Debit Entry",
+        //                        costCenterId: "0");
+
+        //                    await InsertCostCenterTransaction(conn, transaction,
+        //                        date: row.Date,
+        //                        debit: 0,
+        //                        credit: row.Amount,
+        //                        refId: row.Id.ToString(),
+        //                        type: "Payment",
+        //                        description: "Payment Credit Entry",
+        //                        costCenterId: "0");
+
+        //                    await transaction.CommitAsync();
+        //                    success++;
+        //                    Console.WriteLine($"[OK]   id={row.Id}  code={row.Code}  amount={row.Amount}");
+        //                }
+        //                catch (Exception ex)
+        //                {
+        //                    await transaction.RollbackAsync();
+        //                    failed++;
+        //                    Console.WriteLine($"[FAIL] id={row.Id}  code={row.Code}  => {ex.Message}");
+        //                }
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                failed++;
+        //                Console.WriteLine($"[FAIL] id={row.Id} (connection error) => {ex.Message}");
+        //            }
+        //        }
+
+        //        Console.WriteLine("===========================================");
+        //        Console.WriteLine($"Done.  Success={success}  Skipped={skipped}  Failed={failed}");
+        //    }
+
+        //    private async Task<int> InsertVoucherAsync(
+        //  MySqlConnection conn,
+        //  MySqlTransaction transaction,
+        //  CsvRow row)
+        //    {
+        //        string method =
+        //            string.IsNullOrWhiteSpace(row.CheckNo)
+        //                ? "Cash"
+        //                : "Cheque";
+
+        //        string sql = @"
+        //    INSERT INTO tbl_payment_voucher
+        //    (
+        //        date,
+        //        code,
+        //        type,
+        //        method,
+        //        amount,
+        //        description,
+        //        debit_account_id,
+        //        credit_account_id,
+        //        debit_cost_center_id,
+        //        credit_cost_center_id,
+        //        check_no,
+        //        check_date,
+        //        created_by,
+        //        created_date,
+        //        state
+        //    )
+        //    VALUES
+        //    (
+        //        @date,
+        //        @code,
+        //        @type,
+        //        @method,
+        //        @amount,
+        //        @description,
+        //        @debitAccountId,
+        //        @creditAccountId,
+        //        0,
+        //        0,
+        //        @checkNo,
+        //        @checkDate,
+        //        @createdBy,
+        //        NOW(),
+        //        0
+        //    );
+
+        //    SELECT LAST_INSERT_ID();";
+
+        //        using var cmd =
+        //            new MySqlCommand(sql, conn, transaction);
+
+        //        cmd.Parameters.AddWithValue("@date", row.Date);
+        //        cmd.Parameters.AddWithValue("@code", row.Code);
+        //        cmd.Parameters.AddWithValue("@type", _paymentType);
+        //        cmd.Parameters.AddWithValue("@method", method);
+        //        cmd.Parameters.AddWithValue("@amount", row.Amount);
+        //        cmd.Parameters.AddWithValue("@description", row.Description);
+        //        cmd.Parameters.AddWithValue("@debitAccountId", _defaultDebitAccountId);
+        //        cmd.Parameters.AddWithValue("@creditAccountId", _defaultCreditAccountId);
+        //        cmd.Parameters.AddWithValue("@checkNo", row.CheckNo ?? "");
+        //        cmd.Parameters.AddWithValue("@checkDate",
+        //            row.CheckDate.HasValue
+        //                ? row.CheckDate.Value
+        //                : DBNull.Value);
+        //        cmd.Parameters.AddWithValue("@createdBy", _defaultUserId);
+
+        //        return Convert.ToInt32(
+        //            await cmd.ExecuteScalarAsync());
+        //    }
+
+        //    private List<CsvRow> ReadCsv(string filePath)
+        //    {
+        //        var rows = new List<CsvRow>();
+        //        var lines = System.IO.File.ReadAllLines(filePath);
+
+        //        foreach (var line in lines)
+        //        {
+        //            if (string.IsNullOrWhiteSpace(line))
+        //                continue;
+
+        //            var cols = line.Split(',');
+
+        //            if (cols.Length < 6)
+        //                continue;
+
+        //            if (!int.TryParse(cols[0].Trim(), out int id))
+        //                continue;
+
+        //            if (!DateTime.TryParse(cols[1].Trim(), out DateTime date))
+        //                continue;
+
+        //            string code = cols[2].Trim();
+
+        //            if (!decimal.TryParse(
+        //                    cols[5].Trim(),
+        //                    NumberStyles.Any,
+        //                    CultureInfo.InvariantCulture,
+        //                    out decimal amount))
+        //                continue;
+
+        //            string description = cols.Length > 8 ? cols[8].Trim() : "";
+
+        //            string checkNo = cols.Length > 15 ? cols[15].Trim() : "";
+        //            if (checkNo.Equals("NULL", StringComparison.OrdinalIgnoreCase))
+        //                checkNo = "";
+
+        //            DateTime? checkDate = null;
+        //            if (cols.Length > 16 &&
+        //                !cols[16].Trim().Equals("NULL", StringComparison.OrdinalIgnoreCase))
+        //            {
+        //                if (DateTime.TryParse(cols[16].Trim(), out DateTime cd))
+        //                    checkDate = cd;
+        //            }
+
+        //            rows.Add(new CsvRow
+        //            {
+        //                Id = id,
+        //                Date = date,
+        //                Code = code,
+        //                Amount = amount,
+        //                Description = description,
+        //                CheckNo = checkNo,
+        //                CheckDate = checkDate
+        //            });
+        //        }
+
+        //        return rows;
+        //    }
+
+        //    private class CsvRow
+        //    {
+        //        public int Id { get; set; }
+        //        public DateTime Date { get; set; }
+        //        public string Code { get; set; } = "";
+        //        public decimal Amount { get; set; }
+        //        public string Description { get; set; } = "";
+        //        public string CheckNo { get; set; } = "";
+        //        public DateTime? CheckDate { get; set; }
+        //    }
+
+        //    [HttpPost]
+        //    public async Task<IActionResult> ImportPaymentVoucher(IFormFile file)
+        //    {
+        //        try
+        //        {
+        //            if (file == null || file.Length == 0)
+        //                return BadRequest(new
+        //                {
+        //                    status = false,
+        //                    message = "Please select a file."
+        //                });
+
+        //            var uploadPath = Path.Combine(
+        //                Directory.GetCurrentDirectory(),
+        //                "Uploads",
+        //                file.FileName);
+
+        //            Directory.CreateDirectory(
+        //                Path.Combine(Directory.GetCurrentDirectory(), "Uploads"));
+
+        //            using (var stream = new FileStream(uploadPath, FileMode.Create))
+        //            {
+        //                await file.CopyToAsync(stream);
+        //            }
+
+        //            // Call existing method
+        //            await ImportAsync(uploadPath);
+
+        //            return Ok(new
+        //            {
+        //                status = true,
+        //                message = "Import completed successfully"
+        //            });
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            return StatusCode(500, new
+        //            {
+        //                status = false,
+        //                message = ex.Message
+        //            });
+        //        }
+        //    }
+
+        //    #endregion
+
+        #region Receipt Voucher
+
+        // ----------------------------------------------------------------
+        // Main import entry point
+        // ----------------------------------------------------------------
         public async Task ImportAsync(string csvFilePath)
         {
             var rows = ReadCsv(csvFilePath);
@@ -10708,7 +11002,7 @@ WHERE jd.inv_id = @voucherId";
             {
                 try
                 {
-
+                    // Same connection string pattern as SavePaymentVoucher
                     var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                     {
                         Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
@@ -10720,65 +11014,69 @@ WHERE jd.inv_id = @voucherId";
 
                     try
                     {
-                        int voucherId = await InsertVoucherAsync(
-    conn,
-    transaction,
-    row);
+                        // 1. Insert into tbl_receipt_voucher
+                        int voucherId = await InsertVoucherAsync(conn, transaction, row);
 
-                        // 2. Insert tbl_transaction (debit + credit)
-                        string tType = "General Payment";
+                        string tType = "General Receipt";
+                        string voucherDesc = $"Receipt Voucher NO. {row.Code}";
+
+                        // 2. Insert tbl_transaction DEBIT entry
                         await AddTransactionEntry(
-     conn,
-     transaction,
-     row.Date,
-     _defaultDebitAccountId.ToString(),
-     row.Amount,
-     0,
-     voucherId.ToString(),
-     "0",
-     "General Payment",
-     "General Payment",
-     $"Payment Voucher NO. {row.Code}",
-     _defaultUserId,
-     DateTime.Now,
-     row.Code);
-
-                        await AddTransactionEntry(conn, transaction,
+                            conn, transaction,
                             date: row.Date,
-                            accountId: _defaultCreditAccountId.ToString(),
-                            debit: 0,
-                            credit: row.Amount,
-                            transactionId: row.Id.ToString(),
+                            accountId: _defaultDebitAccountId.ToString(),
+                            debit: row.Amount,
+                            credit: 0,
+                            transactionId: voucherId.ToString(),
                             humId: "0",
                             tType: tType,
                             type: tType,
-                            description: $"Payment Voucher NO. {row.Code}",
+                            description: voucherDesc,
                             createdBy: _defaultUserId,
                             createdDate: DateTime.Now,
                             voucherNo: row.Code);
 
-                        // 3. Insert tbl_cost_center_transaction (debit + credit)
-                        await InsertCostCenterTransaction(conn, transaction,
+                        // 3. Insert tbl_transaction CREDIT entry
+                        await AddTransactionEntry(
+                            conn, transaction,
+                            date: row.Date,
+                            accountId: _defaultCreditAccountId.ToString(),
+                            debit: 0,
+                            credit: row.Amount,
+                            transactionId: voucherId.ToString(),
+                            humId: "0",
+                            tType: tType,
+                            type: tType,
+                            description: voucherDesc,
+                            createdBy: _defaultUserId,
+                            createdDate: DateTime.Now,
+                            voucherNo: row.Code);
+
+                        // 4. Insert tbl_cost_center_transaction DEBIT
+                        await InsertCostCenterTransaction(
+                            conn, transaction,
                             date: row.Date,
                             debit: row.Amount,
                             credit: 0,
-                            refId: row.Id.ToString(),
-                            type: "Payment",
-                            description: "Payment Debit Entry",
+                            refId: voucherId.ToString(),
+                            type: "Receipt",
+                            description: "Receipt Debit Entry",
                             costCenterId: "0");
 
-                        await InsertCostCenterTransaction(conn, transaction,
+                        // 5. Insert tbl_cost_center_transaction CREDIT
+                        await InsertCostCenterTransaction(
+                            conn, transaction,
                             date: row.Date,
                             debit: 0,
                             credit: row.Amount,
-                            refId: row.Id.ToString(),
-                            type: "Payment",
-                            description: "Payment Credit Entry",
+                            refId: voucherId.ToString(),
+                            type: "Receipt",
+                            description: "Receipt Credit Entry",
                             costCenterId: "0");
 
                         await transaction.CommitAsync();
                         success++;
-                        Console.WriteLine($"[OK]   id={row.Id}  code={row.Code}  amount={row.Amount}");
+                        Console.WriteLine($"[OK]   id={row.Id}  code={row.Code}  amount={row.Amount}  voucherId={voucherId}");
                     }
                     catch (Exception ex)
                     {
@@ -10790,7 +11088,7 @@ WHERE jd.inv_id = @voucherId";
                 catch (Exception ex)
                 {
                     failed++;
-                    Console.WriteLine($"[FAIL] id={row.Id} (connection error) => {ex.Message}");
+                    Console.WriteLine($"[FAIL] id={row.Id}  (connection error) => {ex.Message}");
                 }
             }
 
@@ -10798,77 +11096,52 @@ WHERE jd.inv_id = @voucherId";
             Console.WriteLine($"Done.  Success={success}  Skipped={skipped}  Failed={failed}");
         }
 
+        // ----------------------------------------------------------------
+        // Insert one row into tbl_receipt_voucher, return new id
+        // ----------------------------------------------------------------
         private async Task<int> InsertVoucherAsync(
-      MySqlConnection conn,
-      MySqlTransaction transaction,
-      CsvRow row)
+            MySqlConnection conn, MySqlTransaction transaction, CsvRow row)
         {
-            string method =
-                string.IsNullOrWhiteSpace(row.CheckNo)
-                    ? "Cash"
-                    : "Cheque";
+            string method = !string.IsNullOrWhiteSpace(row.CheckNo) ? "Cheque" : "Cash";
 
-            string sql = @"
-        INSERT INTO tbl_payment_voucher
-        (
-            date,
-            code,
-            type,
-            method,
-            amount,
-            description,
-            debit_account_id,
-            credit_account_id,
-            debit_cost_center_id,
-            credit_cost_center_id,
-            check_no,
-            check_date,
-            created_by,
-            created_date,
-            state
-        )
-        VALUES
-        (
-            @date,
-            @code,
-            @type,
-            @method,
-            @amount,
-            @description,
-            @debitAccountId,
-            @creditAccountId,
-            0,
-            0,
-            @checkNo,
-            @checkDate,
-            @createdBy,
-            NOW(),
-            0
-        );
+            var sql = @"
+            INSERT INTO tbl_receipt_voucher
+            (
+                date, code, type, method, amount, description,
+                debit_account_id,  debit_cost_center_id,
+                credit_account_id, credit_cost_center_id,
+                check_no, check_date,
+                created_by, created_date, state, project_id
+            )
+            VALUES
+            (
+                @date, @code, @type, @method, @amount, @description,
+                @debitAccountId,  0,
+                @creditAccountId, 0,
+                @checkNo, @checkDate,
+                @createdBy, NOW(), 0, @projectId
+            );
+            SELECT LAST_INSERT_ID();";
 
-        SELECT LAST_INSERT_ID();";
-
-            using var cmd =
-                new MySqlCommand(sql, conn, transaction);
-
+            using var cmd = new MySqlCommand(sql, conn, transaction);
             cmd.Parameters.AddWithValue("@date", row.Date);
             cmd.Parameters.AddWithValue("@code", row.Code);
             cmd.Parameters.AddWithValue("@type", _paymentType);
             cmd.Parameters.AddWithValue("@method", method);
             cmd.Parameters.AddWithValue("@amount", row.Amount);
-            cmd.Parameters.AddWithValue("@description", row.Description);
+            cmd.Parameters.AddWithValue("@description", row.Description ?? "");
             cmd.Parameters.AddWithValue("@debitAccountId", _defaultDebitAccountId);
             cmd.Parameters.AddWithValue("@creditAccountId", _defaultCreditAccountId);
             cmd.Parameters.AddWithValue("@checkNo", row.CheckNo ?? "");
             cmd.Parameters.AddWithValue("@checkDate",
-                row.CheckDate.HasValue
-                    ? row.CheckDate.Value
-                    : DBNull.Value);
+                row.CheckDate.HasValue ? (object)row.CheckDate.Value : DBNull.Value);
             cmd.Parameters.AddWithValue("@createdBy", _defaultUserId);
+            cmd.Parameters.AddWithValue("@projectId", row.ProjectId);
 
-            return Convert.ToInt32(
-                await cmd.ExecuteScalarAsync());
+            return Convert.ToInt32(await cmd.ExecuteScalarAsync());
         }
+
+
 
         private List<CsvRow> ReadCsv(string filePath)
         {
@@ -10880,17 +11153,25 @@ WHERE jd.inv_id = @voucherId";
                 if (string.IsNullOrWhiteSpace(line))
                     continue;
 
-                var cols = line.Split(',');
+                var cols = line.Contains('\t')
+     ? line.Split('\t')
+     : line.Split(',');
 
                 if (cols.Length < 6)
                     continue;
 
                 if (!int.TryParse(cols[0].Trim(), out int id))
                     continue;
-
-                if (!DateTime.TryParse(cols[1].Trim(), out DateTime date))
+                if (!DateTime.TryParseExact(
+                        cols[1].Trim(),
+                        _dateFormats,
+                        CultureInfo.InvariantCulture,
+                        DateTimeStyles.None,
+                        out DateTime date))
+                {
+                    Console.WriteLine($"Invalid Date: {cols[1]}");
                     continue;
-
+                }
                 string code = cols[2].Trim();
 
                 if (!decimal.TryParse(
@@ -10929,6 +11210,13 @@ WHERE jd.inv_id = @voucherId";
             return rows;
         }
 
+        private static string NullToEmpty(string val) =>
+            val.Equals("NULL", StringComparison.OrdinalIgnoreCase) ? "" : val;
+
+        private static bool IsNull(string val) =>
+            string.IsNullOrWhiteSpace(val) ||
+            val.Equals("NULL", StringComparison.OrdinalIgnoreCase);
+
         private class CsvRow
         {
             public int Id { get; set; }
@@ -10938,7 +11226,10 @@ WHERE jd.inv_id = @voucherId";
             public string Description { get; set; } = "";
             public string CheckNo { get; set; } = "";
             public DateTime? CheckDate { get; set; }
+            public int ProjectId { get; set; }
         }
+
+
 
         [HttpPost]
         public async Task<IActionResult> ImportPaymentVoucher(IFormFile file)
@@ -10985,6 +11276,55 @@ WHERE jd.inv_id = @voucherId";
         }
 
         #endregion
+
+        private static readonly string[] _dateFormats = {
+    "dd/MM/yyyy",  
+    "d/M/yyyy",
+    "yyyy-MM-dd",
+    "MM/dd/yyyy"
+};
+
+        private async Task<int> InsertVoucherAsync(
+            MySqlConnection conn, MySqlTransaction transaction, CsvRow row, string rvCode)
+        {
+            string method = !string.IsNullOrWhiteSpace(row.CheckNo) ? "Cheque" : "Cash";
+
+            var sql = @"
+        INSERT INTO tbl_receipt_voucher
+        (
+            date, code, type, method, amount, description,
+            debit_account_id,  debit_cost_center_id,
+            credit_account_id, credit_cost_center_id,
+            check_no, check_date,
+            created_by, created_date, state, project_id
+        )
+        VALUES
+        (
+            @date, @code, @type, @method, @amount, @description,
+            @debitAccountId,  0,
+            @creditAccountId, 0,
+            @checkNo, @checkDate,
+            @createdBy, NOW(), 0, @projectId
+        );
+        SELECT LAST_INSERT_ID();";
+
+            using var cmd = new MySqlCommand(sql, conn, transaction);
+            cmd.Parameters.AddWithValue("@date", row.Date);
+            cmd.Parameters.AddWithValue("@code", rvCode);        // ← RV-0001 not CSV code
+            cmd.Parameters.AddWithValue("@type", _paymentType);
+            cmd.Parameters.AddWithValue("@method", method);
+            cmd.Parameters.AddWithValue("@amount", row.Amount);
+            cmd.Parameters.AddWithValue("@description", row.Description ?? "");
+            cmd.Parameters.AddWithValue("@debitAccountId", _defaultDebitAccountId);
+            cmd.Parameters.AddWithValue("@creditAccountId", _defaultCreditAccountId);
+            cmd.Parameters.AddWithValue("@checkNo", row.CheckNo ?? "");
+            cmd.Parameters.AddWithValue("@checkDate",
+                row.CheckDate.HasValue ? (object)row.CheckDate.Value : DBNull.Value);
+            cmd.Parameters.AddWithValue("@createdBy", _defaultUserId);
+            cmd.Parameters.AddWithValue("@projectId", row.ProjectId);
+
+            return Convert.ToInt32(await cmd.ExecuteScalarAsync());
+        }
 
 
     }
