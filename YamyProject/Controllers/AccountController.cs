@@ -11316,6 +11316,7 @@ WHERE jd.inv_id = @voucherId";
 
         #endregion
 
+        #region Journal Voucher
 
         private class JournalCsvRow
         {
@@ -11541,7 +11542,7 @@ WHERE jd.inv_id = @voucherId";
 
         }
 
-
+        #endregion
 
     }
 
