@@ -49,7 +49,7 @@
     </div>
 
 
-@*   <div class="row g-3 mb-4">
+   <div class="row g-3 mb-4">
 
         <div class="col-6 col-lg-3">
             <div class="card border rounded-3 shadow-sm h-100">
@@ -57,7 +57,7 @@
                     <div class="rounded-3 p-2 bg-success-subtle fs-4">💰</div>
                     <div>
                         <div class="text-muted text-uppercase fw-semibold" style="font-size:.72rem;letter-spacing:.05em">Total Income</div>
-                        <div class="fw-bold text-success fs-5">$@Fmt(Model.TotalIncome)</div>
+                        <div class="fw-bold text-success fs-5">@Fmt(Model.TotalIncome)</div>
                     </div>
                 </div>
             </div>
@@ -69,7 +69,7 @@
                     <div class="rounded-3 p-2 bg-danger-subtle fs-4">💸</div>
                     <div>
                         <div class="text-muted text-uppercase fw-semibold" style="font-size:.72rem;letter-spacing:.05em">Total Expenses</div>
-                        <div class="fw-bold text-danger fs-5">$@Fmt(Model.TotalExpenses)</div>
+                        <div class="fw-bold text-danger fs-5">@Fmt(Model.TotalExpenses)</div>
                     </div>
                 </div>
             </div>
@@ -82,7 +82,7 @@
                     <div>
                         <div class="text-muted text-uppercase fw-semibold" style="font-size:.72rem;letter-spacing:.05em">Net Balance</div>
                         <div class="fw-bold fs-5 @(Model.CurrentBalance < 0 ? "text-danger" : "text-primary")">
-                            $@Fmt(Model.CurrentBalance)
+                            @Fmt(Model.CurrentBalance)
                         </div>
                     </div>
                 </div>
@@ -95,13 +95,13 @@
                     <div class="rounded-3 p-2 bg-warning-subtle fs-4">💳</div>
                     <div>
                         <div class="text-muted text-uppercase fw-semibold" style="font-size:.72rem;letter-spacing:.05em">Petty Cash</div>
-                        <div class="fw-bold text-warning fs-5">$@Fmt(Model.PettyCash)</div>
+                        <div class="fw-bold text-warning fs-5">@Fmt(Model.PettyCash)</div>
                     </div>
                 </div>
             </div>
         </div>
 
-    </div> *@
+    </div> 
 
 
     <div class="row g-3 mb-4">

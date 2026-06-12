@@ -614,7 +614,7 @@ namespace YamyProject.Controllers
                         items.Add(new
                         {
                             Id = reader.GetInt32("id"),
-                            Code = reader.GetInt32("code"),
+                            Code = reader.GetString("code"),
                             Name = reader.GetString("name")
                         });
                     }

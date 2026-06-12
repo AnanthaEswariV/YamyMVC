@@ -1254,7 +1254,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 }
 
                 // ---------------- Level 2 ----------------
-                // main_id = tbl_coa_level_1.code
+                // main_id references tbl_coa_level_1.id
                 var level2Dict = new Dictionary<int, List<CoaNode>>();
                 using (var conn = new MySqlConnection(connStr))
                 {
@@ -1282,15 +1282,15 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     }
                 }
 
-                // Attach Level 2 → match by Level 1 CODE
+                // Attach Level 2 → match by Level 1 ID
                 foreach (var l1 in level1)
                 {
-                    if (int.TryParse(l1.Code, out int l1Code) && level2Dict.ContainsKey(l1Code))
-                        l1.Children.AddRange(level2Dict[l1Code]);
+                    if (level2Dict.ContainsKey(l1.Id))
+                        l1.Children.AddRange(level2Dict[l1.Id]);
                 }
 
                 // ---------------- Level 3 ----------------
-                // main_id = tbl_coa_level_2.code
+                // main_id references tbl_coa_level_2.id
                 var level3Dict = new Dictionary<int, List<CoaNode>>();
                 using (var conn = new MySqlConnection(connStr))
                 {
@@ -1318,18 +1318,17 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     }
                 }
 
-                // Attach Level 3 → match by Level 2 CODE
+                // Attach Level 3 → match by Level 2 ID
                 foreach (var l1 in level1)
                     foreach (var l2 in l1.Children)
                     {
-                        if (int.TryParse(l2.Code, out int l2Code) && level3Dict.ContainsKey(l2Code))
-                            l2.Children.AddRange(level3Dict[l2Code]);
+                        if (level3Dict.ContainsKey(l2.Id))
+                            l2.Children.AddRange(level3Dict[l2.Id]);
                     }
 
                 // ---------------- Level 4 ----------------
-                // main_id = tbl_coa_level_3.code
-                // Key: use long because some codes like 110410001 exceed int range
-                var level4Dict = new Dictionary<long, List<CoaNode>>();
+                // main_id references tbl_coa_level_3.id
+                var level4Dict = new Dictionary<int, List<CoaNode>>();
                 using (var conn = new MySqlConnection(connStr))
                 {
                     await conn.OpenAsync();
@@ -1353,8 +1352,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                                             : reader.GetInt32(reader.GetOrdinal("costcenter"))
                         };
 
-                        // main_id in level4 references level3.code (stored as int in DB)
-                        long parent = reader.GetInt32("main_id");
+                        int parent = reader.GetInt32("main_id");
                         if (!level4Dict.ContainsKey(parent))
                             level4Dict[parent] = new List<CoaNode>();
 
@@ -1362,13 +1360,13 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     }
                 }
 
-                // Attach Level 4 → match by Level 3 CODE
+                // Attach Level 4 → match by Level 3 ID
                 foreach (var l1 in level1)
                     foreach (var l2 in l1.Children)
                         foreach (var l3 in l2.Children)
                         {
-                            if (long.TryParse(l3.Code, out long l3Code) && level4Dict.ContainsKey(l3Code))
-                                l3.Children.AddRange(level4Dict[l3Code]);
+                            if (level4Dict.ContainsKey(l3.Id))
+                                l3.Children.AddRange(level4Dict[l3.Id]);
                         }
 
                 return Ok(new { status = true, data = level1 });

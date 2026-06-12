@@ -10988,9 +10988,6 @@ WHERE jd.inv_id = @voucherId";
 
         #region Receipt Voucher
 
-        // ----------------------------------------------------------------
-        // Main import entry point
-        // ----------------------------------------------------------------
         public async Task ImportAsync(string csvFilePath)
         {
             var rows = ReadCsv(csvFilePath);
@@ -11096,9 +11093,6 @@ WHERE jd.inv_id = @voucherId";
             Console.WriteLine($"Done.  Success={success}  Skipped={skipped}  Failed={failed}");
         }
 
-        // ----------------------------------------------------------------
-        // Insert one row into tbl_receipt_voucher, return new id
-        // ----------------------------------------------------------------
         private async Task<int> InsertVoucherAsync(
             MySqlConnection conn, MySqlTransaction transaction, CsvRow row)
         {
@@ -11140,8 +11134,6 @@ WHERE jd.inv_id = @voucherId";
 
             return Convert.ToInt32(await cmd.ExecuteScalarAsync());
         }
-
-
 
         private List<CsvRow> ReadCsv(string filePath)
         {
@@ -11229,8 +11221,6 @@ WHERE jd.inv_id = @voucherId";
             public int ProjectId { get; set; }
         }
 
-
-
         [HttpPost]
         public async Task<IActionResult> ImportPaymentVoucher(IFormFile file)
         {
@@ -11257,7 +11247,7 @@ WHERE jd.inv_id = @voucherId";
                 }
 
                 // Call existing method
-                await ImportAsync(uploadPath);
+                await ImportJournal(uploadPath);
 
                 return Ok(new
                 {
@@ -11275,10 +11265,8 @@ WHERE jd.inv_id = @voucherId";
             }
         }
 
-        #endregion
-
         private static readonly string[] _dateFormats = {
-    "dd/MM/yyyy",  
+    "dd/MM/yyyy",
     "d/M/yyyy",
     "yyyy-MM-dd",
     "MM/dd/yyyy"
@@ -11325,6 +11313,234 @@ WHERE jd.inv_id = @voucherId";
 
             return Convert.ToInt32(await cmd.ExecuteScalarAsync());
         }
+
+        #endregion
+
+
+        private class JournalCsvRow
+        {
+            public DateTime Date { get; set; }
+            public string Code { get; set; } = "";
+            public int AccountId { get; set; }
+            public decimal Debit { get; set; }
+            public decimal Credit { get; set; }
+            public string Description { get; set; } = "";
+            public string Partner { get; set; } = "";
+        }
+
+        public async Task ImportJournal(string filePath)
+        {
+            var rows = ReadJournalCsv(filePath);
+
+            int success = 0, failed = 0;
+
+            foreach (var group in rows.GroupBy(x => x.Code))
+            {
+                var voucherRows = group.ToList();
+
+                try
+                {
+                    var connStrBuilder = new MySqlConnectionStringBuilder(
+                        _config.GetConnectionString("DefaultConnection"))
+                    {
+                        Database = HttpContext.Session.GetString("DatabaseName")
+                                   ?? _config.GetConnectionString("DefaultDatabase")
+                    };
+
+                    using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                    await conn.OpenAsync();
+                    using var trx = await conn.BeginTransactionAsync();
+
+                    try
+                    {
+                        decimal debitTotal = voucherRows.Sum(x => x.Debit);
+                        decimal creditTotal = voucherRows.Sum(x => x.Credit);
+
+                        if (debitTotal != creditTotal)
+                            throw new Exception($"Unbalanced JV: {group.Key}");
+
+                        int voucherId = await InsertJournalHeader(conn, trx, voucherRows.First(), debitTotal, creditTotal);
+
+                        string code = voucherRows.First().Code;
+
+                        foreach (var row in voucherRows)
+                        {
+                            // 1. Detail Table
+                            await InsertJournalDetail(conn, trx, voucherId, row);
+
+                            // 2. Transaction Table
+                            await InsertJournalTransaction(conn, trx, voucherId, code, row);
+                        }
+
+                        await trx.CommitAsync();
+                        success++;
+
+                        Console.WriteLine($"[OK] JV {group.Key} inserted");
+                    }
+                    catch (Exception ex)
+                    {
+                        await trx.RollbackAsync();
+                        failed++;
+                        Console.WriteLine($"[FAIL] JV {group.Key} => {ex.Message}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    Console.WriteLine($"[FAIL] connection => {ex.Message}");
+                }
+            }
+
+            Console.WriteLine($"Done. Success={success}, Failed={failed}");
+        }
+
+        private async Task<int> InsertJournalHeader(
+    MySqlConnection conn,
+    MySqlTransaction trx,
+    JournalCsvRow row,
+    decimal debitTotal,
+    decimal creditTotal)
+        {
+            string sql = @"
+        INSERT INTO tbl_journal_voucher
+        (date, code, debit, credit, created_by, created_date, state)
+        VALUES
+        (@date, @code, @debit, @credit, @user, NOW(), 0);
+        SELECT LAST_INSERT_ID();";
+
+            using var cmd = new MySqlCommand(sql, conn, trx);
+
+            cmd.Parameters.AddWithValue("@date", row.Date);
+            cmd.Parameters.AddWithValue("@code", row.Code);
+            cmd.Parameters.AddWithValue("@debit", debitTotal);
+            cmd.Parameters.AddWithValue("@credit", creditTotal);
+            cmd.Parameters.AddWithValue("@user", _defaultUserId);
+
+            return Convert.ToInt32(await cmd.ExecuteScalarAsync());
+        }
+
+        private async Task InsertJournalDetail(
+    MySqlConnection conn,
+    MySqlTransaction trx,
+    int voucherId,
+    JournalCsvRow row)
+        {
+            string sql = @"
+        INSERT INTO tbl_journal_voucher_details
+        (date, debit, credit, inv_id, description, account_id, partner)
+        VALUES
+        (@date, @debit, @credit, @inv, @desc, @acc, @partner);";
+
+            using var cmd = new MySqlCommand(sql, conn, trx);
+
+            cmd.Parameters.AddWithValue("@date", row.Date);
+            cmd.Parameters.AddWithValue("@debit", row.Debit);
+            cmd.Parameters.AddWithValue("@credit", row.Credit);
+            cmd.Parameters.AddWithValue("@inv", voucherId);
+            cmd.Parameters.AddWithValue("@desc", row.Description ?? "");
+            cmd.Parameters.AddWithValue("@acc", row.AccountId);
+            cmd.Parameters.AddWithValue("@partner", row.Partner ?? "");
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        private async Task InsertJournalTransaction(
+    MySqlConnection conn,
+    MySqlTransaction trx,
+    int voucherId,
+    string code,
+    JournalCsvRow row)
+        {
+            string sql = @"
+        INSERT INTO tbl_transaction
+        (date, account_id, debit, credit, transaction_id,
+         hum_id, t_type, type, description,
+         created_by, created_date, state, voucher_no)
+        VALUES
+        (@date, @acc, @debit, @credit, @tid,
+         0, 'JOURNAL', 'JOURNAL VOUCHER', @desc,
+         @user, NOW(), 0, @code);";
+
+            using var cmd = new MySqlCommand(sql, conn, trx);
+
+            cmd.Parameters.AddWithValue("@date", row.Date);
+            cmd.Parameters.AddWithValue("@acc", row.AccountId);
+            cmd.Parameters.AddWithValue("@debit", row.Debit);
+            cmd.Parameters.AddWithValue("@credit", row.Credit);
+            cmd.Parameters.AddWithValue("@tid", voucherId);
+            cmd.Parameters.AddWithValue("@desc", $"Journal Voucher NO. {code}");
+            cmd.Parameters.AddWithValue("@user", _defaultUserId);
+            cmd.Parameters.AddWithValue("@code", code);
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+        private List<JournalCsvRow> ReadJournalCsv(string filePath)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(filePath))
+                    throw new ArgumentException("CSV file path is null or empty");
+
+                if (!System.IO.File.Exists(filePath))
+                    throw new FileNotFoundException("CSV file not found", filePath);
+
+                var rows = new List<JournalCsvRow>();
+                var lines = System.IO.File.ReadAllLines(filePath);
+
+                foreach (var line in lines)
+                {
+                    var cols = line.Contains('\t')
+        ? line.Split('\t')
+        : line.Split(',');
+
+                    if (cols.Length < 5)
+                        continue;
+
+                    if (!DateTime.TryParse(cols[1].Trim(), out DateTime date))
+                    {
+                        Console.WriteLine($"Invalid Date: {cols[1]}");
+                        continue;
+                    }
+
+                    if (!int.TryParse(cols[3].Trim(), out int accountId))
+                    {
+                        Console.WriteLine($"Invalid AccountId: {cols[3]}");
+                        continue;
+                    }
+
+                    if (!decimal.TryParse(cols[4].Trim(), out decimal debit))
+                    {
+                        Console.WriteLine($"Invalid Debit: {cols[4]}");
+                        continue;
+                    }
+
+                    if (!decimal.TryParse(cols[5].Trim(), out decimal credit))
+                    {
+                        Console.WriteLine($"Invalid Credit: {cols[5]}");
+                        continue;
+                    }
+
+                    rows.Add(new JournalCsvRow
+                    {
+                        Date = date,
+                        Code = cols[2].Trim(),
+                        AccountId = accountId,
+                        Debit = debit,
+                        Credit = credit,
+                        Description = cols.Length > 6 ? cols[6].Trim() : "",
+                        Partner = cols.Length > 7 ? cols[7].Trim() : ""
+                    });
+                }
+
+                return rows;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+        }
+
 
 
     }

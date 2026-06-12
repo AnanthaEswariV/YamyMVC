@@ -1969,7 +1969,7 @@ namespace YamyProject.Core.Models
             _ => "bg-warning text-dark"
         };
     }
-
+   
 
     public class JournalVoucherDetailRequest
     {
