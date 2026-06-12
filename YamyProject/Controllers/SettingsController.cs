@@ -152,7 +152,6 @@
                     Database = HttpContext.Session.GetString("DatabaseName")
                                ?? _config.GetConnectionString("DefaultDatabase")
                 };
-
                 using var conn = new MySqlConnection(connStr.ConnectionString);
                 await conn.OpenAsync();
 
@@ -175,20 +174,33 @@
                     }
                 }
 
-                // Selected account
+                // ✅ Get selected account_id AND account_name together
                 var selectedCmd = new MySqlCommand(@"
-            SELECT account_id
-            FROM tbl_coa_config
-            WHERE category = @category
+            SELECT c.account_id, CONCAT(a.code,' - ',a.name) AS account_name
+            FROM tbl_coa_config c
+            INNER JOIN tbl_coa_level_4 a ON a.id = c.account_id
+            WHERE c.category = @category
             LIMIT 1", conn);
 
                 selectedCmd.Parameters.AddWithValue("@category", category);
-                var selectedObj = await selectedCmd.ExecuteScalarAsync();
+
+                int? selectedAccountId = null;
+                string selectedAccountName = null;
+
+                using (var reader = await selectedCmd.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        selectedAccountId = reader.GetInt32("account_id");
+                        selectedAccountName = reader.GetString("account_name");
+                    }
+                }
 
                 return Ok(new
                 {
                     accounts,
-                    selectedAccountId = selectedObj != null ? Convert.ToInt32(selectedObj) : (int?)null
+                    selectedAccountId,
+                    selectedAccountName  // ✅ now frontend knows both id and name
                 });
             }
             catch (Exception ex)

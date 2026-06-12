@@ -218,16 +218,17 @@
         }
     }
 
-    function loadDropdown(id, category) {
+        function loadDropdown(id, category) {
         $.get('@Url.Action("GetAccounts", "Settings")', { category }, function (res) {
             const ddl = $("#" + id);
+            ddl.attr("data-category", category);
             ddl.empty().append('<option value="">-- Select --</option>');
-            if(res.accounts){
+            if (res.accounts) {
                 res.accounts.forEach(a => {
                     ddl.append($('<option>', {
                         value: a.id,
                         text: a.name,
-                        selected: a.id === res.selectedAccountId
+                        selected: parseInt(a.id) === parseInt(res.selectedAccountId) // ✅ force both to int
                     }));
                 });
             }
@@ -289,28 +290,73 @@
         loadDropdown("DefaultAccountBank", "Default Account For Bank");
     }
 
-     $('#saveDefaultAccountsBtn').on('click', function (e) {
+    $('#saveDefaultAccountsBtn').on('click', function (e) {
         e.preventDefault();
 
-        // Collect all dropdowns
-        const settings = [];
+        const btn = $(this);
 
+        // ✅ Step 1: Snapshot current selections BEFORE any reload
+        const snapshot = {};
         $(".section select").each(function () {
-            const category = $(this).prev("label").text().trim();
+            const category  = $(this).data("category");
             const accountId = parseInt($(this).val()) || 0;
-
-            // Only include if a value is selected
-            if (accountId > 0) {
-                settings.push({ category, accountId });
+            if (category && accountId > 0) {
+                snapshot[category] = accountId;
             }
         });
 
-        if (settings.length === 0) {
-            toastr.warning("Please select at least one account before saving.");
+        // ✅ Step 2: Also collect from unvisited sections (no data-category yet)
+        // For those, we need to load them first — but only if they have NO data-category stamped
+        const unvisited = $(".section select").filter(function () {
+            return !$(this).data("category"); // not yet loaded
+        }).length > 0;
+
+        if (!unvisited) {
+            // All sections already loaded — save snapshot directly
+            submitSettings(snapshot, btn);
             return;
         }
 
-        // AJAX POST
+        // Some sections not loaded yet — load all, then merge snapshot with newly loaded values
+        btn.prop('disabled', true).text('Saving...');
+
+        loadCommon();
+        loadVendor();
+        loadInventory();
+        loadCustomer();
+        loadEmployee();
+        loadBank();
+
+        $(document).ajaxStop(function () {
+            $(document).off('ajaxStop');
+
+            // Merge: snapshot (user's changes) takes priority over freshly loaded DB values
+            $(".section select").each(function () {
+                const category  = $(this).data("category");
+                const accountId = parseInt($(this).val()) || 0;
+                if (category && accountId > 0 && !snapshot[category]) {
+                    snapshot[category] = accountId; // add unvisited section DB values
+                }
+            });
+
+            submitSettings(snapshot, btn);
+        });
+    });
+
+    function submitSettings(snapshot, btn) {
+        const settings = Object.entries(snapshot).map(([category, accountId]) => ({
+            category,
+            accountId
+        }));
+
+        if (settings.length === 0) {
+            toastr.warning("Please select at least one account before saving.");
+            btn.prop('disabled', false).text('Save');
+            return;
+        }
+
+        console.log(settings);
+
         $.ajax({
             url: '@Url.Action("SaveDefaultAccounts", "Settings")',
             type: 'POST',
@@ -322,12 +368,14 @@
                     setTimeout(() => location.reload(), 1500);
                 } else {
                     toastr.error(res.message);
+                    btn.prop('disabled', false).text('Save');
                 }
             },
             error: function (xhr) {
-                console.error("❌ AJAX ERROR", xhr);
+                console.error("AJAX ERROR", xhr);
                 toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                btn.prop('disabled', false).text('Save');
             }
         });
-    });
+    }
 </script>
