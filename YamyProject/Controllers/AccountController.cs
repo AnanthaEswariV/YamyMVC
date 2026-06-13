@@ -1834,6 +1834,7 @@ namespace YamyProject.Controllers
                           `discount` decimal(20,4) DEFAULT NULL,
                           `cost_center_id` int DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
+                            `description` VARCHAR(5000) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
                           PRIMARY KEY (`id`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 

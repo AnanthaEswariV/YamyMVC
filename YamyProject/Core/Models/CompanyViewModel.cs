@@ -1585,6 +1585,7 @@ namespace YamyProject.Core.Models
     {
         public int ItemId { get; set; }
         public string ItemName { get; set; }
+        public string Description { get; set; }
         public string ItemCode { get; set; }
         public decimal Qty { get; set; }
         public decimal Price { get; set; }

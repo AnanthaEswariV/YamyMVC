@@ -101,6 +101,7 @@
                     <thead>
                         <tr>
                             <th>Item Name</th>
+                            <th>Description</th>
                             <th>QTY</th>
                             <th>Price</th>
                             <th>Item VAT</th>
@@ -291,6 +292,7 @@
                                 <th>S.No</th>
                                 <th>Code</th>
                                 <th>Item Name</th>
+                                <th>Description</th>
                                 <th>QTY</th>
                                 <th>Price</th>
                                 <th>Disc</th>
@@ -573,8 +575,27 @@
         row.append(actionTd);
         tbody.append(row);
                 });
+                 initExcelExport('table1', 'Sales Invoices');
             }
 
+                    function initExcelExport(tableId, fileTitle) {
+            if ($.fn.DataTable.isDataTable('#' + tableId)) {
+                $('#' + tableId).DataTable().destroy();   // clear old instance, keep rows
+            }
+            $('#' + tableId).DataTable({
+                dom: 'Bt',            // B = buttons, t = table only (no search/paging/info)
+                paging: false,
+                info: false,
+                ordering: false,      // keep your own render order
+                buttons: [{
+                    extend: 'excelHtml5',
+                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                    className: 'btn btn-primary',
+                    title: fileTitle,
+                    exportOptions: { columns: ':not(:last-child)' }  // <-- skip the Actions column
+                }]
+            });
+        }
             $(document).on('click', '.viewInvoiceBtn', function () {
             const sale = $(this).data('invoice');
             const salesId = sale.id;
@@ -602,6 +623,7 @@
                 items.forEach(item => {
                     const row = $('<tr>');
                     row.append($('<td>').text(item.itemName));
+                    row.append($('<td>').text(item.description));
                     row.append($('<td>').text(parseFloat(item.qty).toFixed(4)));
                     row.append($('<td>').text(parseFloat(item.price).toFixed(4)));
                     row.append($('<td>').text(parseFloat(item.itemVat).toFixed(4)));
@@ -670,7 +692,9 @@
 
                     tbody.append(tr);
                 }
+                 
             });
+             initExcelExport('itemWiseTableData', 'Sales Invoices - Item Wise');
         }
 
             function formatDate(dateStr) {
@@ -696,6 +720,8 @@
                     <td>${rowCount}</td>
                     <td><input type="text" class="form-control form-control-sm" readonly></td>
                     <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+                    <td><input type="text" class="form-control form-control-sm descInput"></td>
+                       <td><input type="text" class="form-control form-control-sm"></td>
                     <td><input type="number" class="form-control form-control-sm qty" value="0"></td>
                     <td><input type="number" class="form-control form-control-sm" value="0" step="0.01"></td>
                     <td><input type="number" class="form-control form-control-sm" value="0" step="0.01" disabled></td>
@@ -840,6 +866,7 @@
                             <td>${idx + 1}</td>
                             <td><input type="text" class="form-control form-control-sm" value="${item.itemCode || ''}" readonly></td>
                             <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+                            <td><input type="text" class="form-control form-control-sm descInput" value="${item.description}"></td>
                             <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
                             <td><input class="form-control form-control-sm" value="${item.price || 0}" data-sales-price="${item.sales_Price  || 0}"></td>
                             <td><input class="form-control form-control-sm" value="${item.discount || 0}" disabled></td>
@@ -953,6 +980,7 @@
 
         const item = {
             ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
+             Description:  row.find('.descInput').val().trim() || '',
             Qty: qty,
             Price: price,
             CostPrice: parseFloat(row.find('td:nth-child(5) input').data('sales_Price')) || 0,
@@ -1125,26 +1153,18 @@
             }
         });
 
-        function calculateRow(row) {
-            const qty = parseFloat(row.find("td:nth-child(4) input").val()) || 0; // Quantity
-            const price = parseFloat(row.find("td:nth-child(5) input").val()) || 0; // Price
-            const discount = parseFloat(row.find("td:nth-child(6) input").val()) || 0; // Discount
-
-            // Net = Quantity * Price - Discount
+               function calculateRow(row) {
+            const qty      = parseFloat(row.find(".qty").val()) || 0;
+            const price    = parseFloat(row.find(".priceInput").val()) || 0;
+            const discount = parseFloat(row.find(".discInput").val()) || 0;
             const net = qty * price - discount;
-            row.find("td:nth-child(7)").text(net.toFixed(2)); // Set the "Net" field
+            row.find(".netCell").text(net.toFixed(2));
 
-            const taxPercent = parseFloat(row.find(".tax option:selected").data("value")) || 0; // Tax percentage
-            const taxAmount = net * (taxPercent / 100); // Calculate tax
-            const amount = net + taxAmount; // Total amount including tax
-
-            row.find(".tax").attr("title", `Tax Amount: ${taxAmount.toFixed(2)}`); // Set tax title
-            row.find("td:nth-child(9)").text(amount.toFixed(2)); // Set the "Amount" field
-
-            // Update the invoice totals (optional)
+            const taxPercent = parseFloat(row.find(".tax option:selected").data("value")) || 0;
+            const amount = net + net * (taxPercent / 100);
+            row.find(".amountCell").text(amount.toFixed(2));
             calculateInvoiceTotals();
         }
-
         $(document).on("input", "td:nth-child(4) input, td:nth-child(5) input, td:nth-child(6) input", function() {
             const row = $(this).closest("tr");
 

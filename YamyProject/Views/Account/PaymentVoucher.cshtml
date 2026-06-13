@@ -36,10 +36,10 @@
                 data-bs-target="#paymentVoucherModal">
             <i class="fas fa-plus me-1"></i> New PV
         </button>
-        <input type="file" id="excelFile" class="form-control" />
+    @*     <input type="file" id="excelFile" class="form-control" />
         <button type="button" id="btnImport" class="btn btn-primary">
             Import Payment Voucher
-        </button>
+        </button> *@
     </div>
     <div class="card-body">
         <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
@@ -348,7 +348,7 @@
             formData.append('file', fileInput.files[0]);
 
             $.ajax({
-                  url: '@Url.Action("ImportPaymentVoucher", "Account")',
+                  url: '@Url.Action("ImportSalesInvoices", "Migration")',
                 type: 'POST',
                 data: formData,
                 processData: false,
@@ -360,21 +360,16 @@
                         .text('Importing...');
                 },
 
-                success: function (res) {
-
-                    if (res.status) {
-
-                        toastr.success(res.message);
-
-                        console.log(res);
-
-                        // Reload voucher list
-                        loadPaymentVoucher();
-                    }
-                    else {
-                        toastr.error(res.message);
-                    }
-                },
+                       success: function (res) {
+            const r = res.result || {};
+            console.log(r);
+            if ((r.skipped || 0) > 0 || (r.failed || 0) > 0) {
+                toastr.warning(`Imported ${r.success}. Skipped ${r.skipped}, failed ${r.failed}. See console.`);
+                (r.errors || []).forEach(e => console.warn(e)); 
+            } else {
+                toastr.success(`All ${r.success} invoices imported.`);
+            }
+        },
 
                 error: function (xhr) {
 

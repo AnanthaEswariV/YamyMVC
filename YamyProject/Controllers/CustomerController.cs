@@ -1234,7 +1234,7 @@ SELECT
     
     sd.cost_center_id AS Cost_Center_Id,
     sd.project_id AS Project_Id,
-
+    sd.description AS Description,
     s.warehouse_id AS Warehouse_Id,
     s.po_num AS PO_Num,
     s.bill_to AS Bill_To,
@@ -1334,7 +1334,7 @@ WHERE s.state = 0
                             ItemId = reader["ItemId"] == DBNull.Value ? 0 : Convert.ToInt32(reader["ItemId"]),
                             ItemCode = reader["ItemCode"] == DBNull.Value ? string.Empty : reader["ItemCode"].ToString(),
                             ItemName = reader["ItemName"] == DBNull.Value ? string.Empty : reader["ItemName"].ToString(),
-
+                            Description = reader["Description"] == DBNull.Value ? string.Empty : reader["Description"].ToString(),
                             Qty = reader["Qty"] == DBNull.Value ? 0m : Convert.ToDecimal(reader["Qty"]),
                             Price = reader["Price"] == DBNull.Value ? 0m : Convert.ToDecimal(reader["Price"]),
                             Discount = reader["Discount"] == DBNull.Value ? 0m : Convert.ToDecimal(reader["Discount"]),
