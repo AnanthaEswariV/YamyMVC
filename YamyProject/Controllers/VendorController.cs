@@ -1563,7 +1563,7 @@ WHERE id=@id;";
         }
 
         private async Task InsertPurchaseItems(MySqlConnection conn, MySqlTransaction transaction, int purchaseId,
-     List<PurchaseItemRequest> items, DateTime invoiceDate, string invoiceCode, int warehouseId, int inventoryAccountId)
+           List<PurchaseItemRequest> items, DateTime invoiceDate, string invoiceCode, int warehouseId, int inventoryAccountId)
         {
             // Batch insert items
             var valueList = new List<string>();
@@ -1617,6 +1617,100 @@ WHERE id=@id;";
                     await InsertCostCenterTransaction(conn, transaction, invoiceDate, item.Total.ToString(),
                         "0", purchaseId.ToString(), "Purchase", "", item.CostCenterId.ToString());
                 }
+            }
+        }
+
+        // ✅ NEW: Fetch item's COGS account and Asset/Inventory account from tbl_items
+        private async Task<(int CogsAccountId, int AssetAccountId)> GetItemAccounts(
+            MySqlConnection conn, MySqlTransaction transaction, int itemId)
+        {
+            var query = @"SELECT 
+                    IFNULL(cogs_account_id, 0) AS cogs_account_id, 
+                    IFNULL(asset_account_id, 0) AS asset_account_id 
+                  FROM tbl_items 
+                  WHERE id = @itemId";
+
+            await using var cmd = new MySqlCommand(query, conn, transaction);
+            cmd.Parameters.AddWithValue("@itemId", itemId);
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+                return (
+                    Convert.ToInt32(reader["cogs_account_id"]),
+                    Convert.ToInt32(reader["asset_account_id"])
+                );
+            }
+
+            return (0, 0);
+        }
+
+        private async Task InsertTransactions(MySqlConnection conn, MySqlTransaction transaction,
+            int purchaseId, PurchaseInvoiceRequest model, int userId, DefaultAccountIds accountIds)
+        {
+            string accountId = model.PaymentMethod == "Credit"
+                ? accountIds.PaymentCreditMethodId.ToString()
+                : model.AccountCashId.ToString();
+
+            string description = model.PaymentMethod == "Credit"
+                ? "Purchase Invoice"
+                : "Purchase Invoice Cash";
+
+            // ✅ 1. Accounts Payable / Cash — Credit side (Net Total)
+            if (model.NetTotal > 0)
+            {
+                await AddTransactionEntry(conn, transaction, model.Date.Date, accountId, "0",
+                    model.NetTotal.ToString(CultureInfo.InvariantCulture), purchaseId.ToString(),
+                    model.VendorId.ToString(), "Purchase Invoice", description,
+                    $"Purchase Invoice NO. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
+            }
+
+            // ✅ 2. VAT transaction — Debit VAT Input account
+            if (model.Vat > 0)
+            {
+                await AddTransactionEntry(conn, transaction, model.Date.Date, accountIds.VatId.ToString(),
+                    model.Vat.ToString(CultureInfo.InvariantCulture), "0", purchaseId.ToString(), "0",
+                    "Purchase Invoice", "Purchase Invoice",
+                    $"Vat Input For Invoice No. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
+            }
+
+            // ✅ 3. Per-item: Inventory Asset + COGS journal entries (like QuickBooks pattern)
+            foreach (var item in model.Items)
+            {
+                // Fetch item-specific accounts from tbl_items
+                var (cogsAccountId, assetAccountId) = await GetItemAccounts(conn, transaction, item.ItemId);
+
+                decimal itemCostTotal = item.CostPrice * item.Quantity;   // cost price × qty → Inventory Asset debit
+                decimal itemSalesTotal = item.Price * item.Quantity;       // sales price × qty → Inventory Asset credit
+                decimal itemCogsTotal = item.Total;                        // COGS debit
+
+                // ✅ 3a. Inventory Asset — Debit (cost price × qty)
+                if (assetAccountId > 0 && itemCostTotal > 0)
+                {
+                    await AddTransactionEntry(conn, transaction, model.Date.Date, assetAccountId.ToString(),
+                        itemCostTotal.ToString(CultureInfo.InvariantCulture), "0",
+                        purchaseId.ToString(), "0", "Purchase Invoice", "Purchase Invoice",
+                        $"Inventory Asset Debit For Invoice No. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
+                }
+                else if (assetAccountId <= 0 && accountIds.InventoryId > 0 && itemCostTotal > 0)
+                {
+                    // ✅ Fallback to default inventory account if item has no specific asset account
+                    await AddTransactionEntry(conn, transaction, model.Date.Date, accountIds.InventoryId.ToString(),
+                        itemCostTotal.ToString(CultureInfo.InvariantCulture), "0",
+                        purchaseId.ToString(), "0", "Purchase Invoice", "Purchase Invoice",
+                        $"Purchase For Invoice No. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
+                }
+
+                // ✅ 3b. Inventory Asset — Credit (sales price × qty)
+                if (assetAccountId > 0 && itemSalesTotal > 0)
+                {
+                    await AddTransactionEntry(conn, transaction, model.Date.Date, assetAccountId.ToString(),
+                        itemSalesTotal.ToString(CultureInfo.InvariantCulture), "0",
+                        purchaseId.ToString(), "0", "Purchase Invoice", "Purchase Invoice",
+                        $"Inventory Asset Credit For Invoice No. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
+                }
+
+              
             }
         }
 
@@ -1732,151 +1826,6 @@ WHERE id=@id;";
             cmd.Parameters.AddWithValue("@cost_center_id", costCenterId);
 
             await cmd.ExecuteNonQueryAsync();
-        }
-
-        private async Task<(int CogsAccountId, int AssetAccountId)> GetItemAccounts(
-     MySqlConnection conn, MySqlTransaction transaction, int itemId)
-        {
-            // ✅ Check exact column names in YOUR tbl_items table
-            var query = @"SELECT 
-                    IFNULL(cogs_account_id, 0)  AS cogs_account_id, 
-                    IFNULL(asset_account_id, 0) AS asset_account_id 
-                  FROM tbl_items 
-                  WHERE id = @itemId 
-                  LIMIT 1";
-
-            await using var cmd = new MySqlCommand(query, conn, transaction);
-            cmd.Parameters.AddWithValue("@itemId", itemId);
-            await using var reader = await cmd.ExecuteReaderAsync();
-
-            if (await reader.ReadAsync())
-            {
-                int cogsId = reader.IsDBNull(reader.GetOrdinal("cogs_account_id"))
-                              ? 0 : Convert.ToInt32(reader["cogs_account_id"]);
-                int assetId = reader.IsDBNull(reader.GetOrdinal("asset_account_id"))
-                              ? 0 : Convert.ToInt32(reader["asset_account_id"]);
-                return (cogsId, assetId);
-            }
-
-            return (0, 0);
-        }
-        private async Task InsertTransactions(MySqlConnection conn, MySqlTransaction transaction,
-              int purchaseId, PurchaseInvoiceRequest model, int userId, DefaultAccountIds accountIds)
-        {
-            string apAccountId = model.PaymentMethod == "Credit"
-                ? accountIds.PaymentCreditMethodId.ToString()
-                : model.AccountCashId.ToString();
-
-            string description = model.PaymentMethod == "Credit"
-                ? "Purchase Invoice"
-                : "Purchase Invoice Cash";
-
-            // 1. Supplier / AP — CREDIT (net total)
-            if (model.NetTotal > 0)
-            {
-                await AddTransactionEntry(conn, transaction, model.Date.Date,
-                    apAccountId, "0",
-                    model.NetTotal.ToString(CultureInfo.InvariantCulture),
-                    purchaseId.ToString(), model.VendorId.ToString(),
-                    "Purchase Invoice", description,
-                    $"Purchase Invoice NO. {model.InvoiceCode}",
-                    userId, DateTime.Now.Date, model.InvoiceCode);
-            }
-
-            // 2. VAT Input — DEBIT (associate with vendor so vendor-ledger shows VAT row)
-            if (model.Vat > 0)
-            {
-                await AddTransactionEntry(conn, transaction, model.Date.Date,
-                    accountIds.VatId.ToString(),
-                    model.Vat.ToString(CultureInfo.InvariantCulture), "0",
-                    purchaseId.ToString(), model.VendorId.ToString(),
-                    "Purchase Invoice", "Purchase Invoice",
-                    $"Vat Input For Invoice No. {model.InvoiceCode}",
-                    userId, DateTime.Now.Date, model.InvoiceCode);
-            }
-
-            // 3. Per-item Inventory / Asset entries — DEBIT one journal row per item
-            bool hasAssetColumn = false;
-            await using (var checkCmd = new MySqlCommand(
-                @"SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-          WHERE TABLE_SCHEMA = DATABASE() 
-          AND TABLE_NAME = 'tbl_items' 
-          AND COLUMN_NAME = 'asset_account_id'", conn, transaction))
-            {
-                var colCount = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
-                hasAssetColumn = colCount > 0;
-            }
-
-            string itemQuery = hasAssetColumn
-                ? @"SELECT pd.item_id, pd.cost_price, pd.qty, IFNULL(i.name, '') AS item_name, IFNULL(i.asset_account_id, 0) AS asset_account_id
-            FROM tbl_purchase_details pd
-            INNER JOIN tbl_items i ON i.id = pd.item_id
-            WHERE pd.purchase_id = @purchaseId"
-                : @"SELECT pd.item_id, pd.cost_price, pd.qty, IFNULL(i.name, '') AS item_name, 0 AS asset_account_id
-            FROM tbl_purchase_details pd
-            INNER JOIN tbl_items i ON i.id = pd.item_id
-            WHERE pd.purchase_id = @purchaseId";
-
-            var itemRows = new List<(int ItemId, string ItemName, int AssetAccountId, decimal CostTotal)>();
-
-            await using (var itemCmd = new MySqlCommand(itemQuery, conn, transaction))
-            {
-                itemCmd.Parameters.AddWithValue("@purchaseId", purchaseId);
-                await using var reader = await itemCmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
-                {
-                    int itemId = Convert.ToInt32(reader["item_id"]);
-                    string itemName = reader["item_name"].ToString();
-                    int assetAccId = Convert.ToInt32(reader["asset_account_id"]);
-                    decimal costPrice = Convert.ToDecimal(reader["cost_price"]);
-                    decimal qty = Convert.ToDecimal(reader["qty"]);
-                    decimal costTotal = costPrice * qty;
-
-                    if (costTotal > 0)
-                        itemRows.Add((itemId, itemName, assetAccId, costTotal));
-                }
-            }
-
-            bool anyInserted = false;
-
-            foreach (var row in itemRows)
-            {
-                // choose asset account: item's asset_account_id or configured Inventory account or Purchase account fallback
-                int inventoryAccount = row.AssetAccountId > 0
-                    ? row.AssetAccountId
-                    : accountIds.InventoryId;
-
-                if (inventoryAccount <= 0)
-                    inventoryAccount = accountIds.PurchaseInvoiceId;
-
-                if (inventoryAccount <= 0) continue;
-
-                // Insert one debit line per item (Inventory/Asset)
-                // associate hum_id with vendor so vendor-specific journal view includes these lines
-                await AddTransactionEntry(conn, transaction, model.Date.Date,
-                    inventoryAccount.ToString(),
-                    row.CostTotal.ToString(CultureInfo.InvariantCulture), // debit
-                    "0",                                                   // credit
-                    purchaseId.ToString(), model.VendorId.ToString(),
-                    "Purchase Invoice", "Purchase Invoice",
-                    $"Inventory Asset [{row.ItemName}] For Invoice No. {model.InvoiceCode}",
-                    userId, DateTime.Now.Date, model.InvoiceCode);
-
-                anyInserted = true;
-            }
-
-            // 4. If no per-item asset entries could be created, fallback to single inventory total
-            if (!anyInserted && model.TotalBefore > 0 && accountIds.InventoryId > 0)
-            {
-                await AddTransactionEntry(conn, transaction, model.Date.Date,
-                    accountIds.InventoryId.ToString(),
-                    model.TotalBefore.ToString(CultureInfo.InvariantCulture),
-                    "0",
-                    purchaseId.ToString(), model.VendorId.ToString(),
-                    "Purchase Invoice", "Purchase Invoice",
-                    $"Inventory Asset For Invoice No. {model.InvoiceCode}",
-                    userId, DateTime.Now.Date, model.InvoiceCode);
-            }
         }
 
         private async Task AddTransactionEntry(MySqlConnection conn, MySqlTransaction transaction,
