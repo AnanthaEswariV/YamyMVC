@@ -2184,6 +2184,8 @@ namespace YamyProject.Core.Models
         public decimal Total { get; set; }
         public int CostCenterId { get; set; }
         public string Type { get; set; }
+        public string ItemName { get; set; }      
+        public int AssetAccountId { get; set; }
     }
 
     public class DefaultAccountIds
