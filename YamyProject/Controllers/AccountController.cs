@@ -606,7 +606,7 @@ namespace YamyProject.Controllers
                             CREATE TABLE IF NOT EXISTS `tbl_coa_level_4` (
                               `id` int NOT NULL AUTO_INCREMENT,
                               `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
-                              `code` int NOT NULL,
+                              `code` string NOT NULL,
                               `main_id` int NOT NULL,
                               `debit` decimal(20,3) DEFAULT 0.000,
                               `credit` decimal(20,3) DEFAULT 0.000,

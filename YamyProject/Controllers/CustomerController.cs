@@ -2661,14 +2661,15 @@ LIMIT 1;", conn);
                     // Insert sales detail
                     var insertDetailSql = @"
             INSERT INTO tbl_sales_details 
-            (sales_id, item_id, qty, cost_price, price, discount, vatp, vat, total, cost_center_id)
+            (sales_id, item_id,description, qty, cost_price, price, discount, vatp, vat, total, cost_center_id)
             VALUES 
-            (@sales_id, @item_id, @qty, @cost_price, @price, @discount, @vatp, @vat, @total, @costCenter);";
+            (@sales_id, @item_id,@description, @qty, @cost_price, @price, @discount, @vatp, @vat, @total, @costCenter);";
 
                     using (var cmdDetail = new MySqlCommand(insertDetailSql, conn, tx))
                     {
                         cmdDetail.Parameters.AddWithValue("@sales_id", invId);
                         cmdDetail.Parameters.AddWithValue("@item_id", item.ItemId);
+                        cmdDetail.Parameters.AddWithValue("@description", item.Description);
                         cmdDetail.Parameters.AddWithValue("@qty", item.Qty);
                         cmdDetail.Parameters.AddWithValue("@price", item.Price);
                         var costParam = cmdDetail.Parameters.Add("@cost_price", MySqlDbType.Decimal);

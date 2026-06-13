@@ -1678,6 +1678,7 @@ namespace YamyProject.Core.Models
     public class SalesItemRequest
     {
         public int ItemId { get; set; }
+        public string Description { get; set; }
         public decimal Qty { get; set; }
         public decimal Price { get; set; }
         public decimal CostPrice { get; set; }
