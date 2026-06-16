@@ -575,7 +575,7 @@
         });
 
 
-               $(document).on('click', '#addEditItemRowBtn', function(e) {
+        $(document).on('click', '#addEditItemRowBtn', function(e) {
                  e.preventDefault();
                  e.stopPropagation();
                  addEditItemRow();
@@ -685,19 +685,15 @@
 
 
 
-                function populateDefaultTables(data) {
+        function populateDefaultTables(data) {
                     salesData = data || [];
 
             const table1Body = $("#table1 tbody").empty();
             const table2Body = $("#table2 tbody").empty();
 
-            if (!data || data.length === 0) {
-                table1Body.append(`
-                    <tr>
-                        <td colspan="10" class="text-center">No records found</td>
-                    </tr>
-                `);
-            } else {
+                   if (!data || data.length === 0) {
+            table1Body.empty();
+        } else {
 
                 data.forEach((sale, index) => {
 
@@ -818,30 +814,7 @@
             });
         }
 
-        $(document).on('click', '.viewPurchaseInvoiceBtn', function (e) {
-            e.preventDefault();
-            const purchaseId = $(this).data('purchase-id');
-            if (!purchaseId) return;
-            const newTab = window.open('', '_blank');
-            newTab.document.write(`
-                <iframe src="/Vendor/GetPurchaseInvoiceReport?purchaseId=${purchaseId}"
-                        style="width:100%; height:100vh; border:none;"></iframe>
-            `);
-        });
-
-        $(document).on('click', '.viewPurchaseReceiveBtn', function (e) {
-            e.preventDefault();
-            const purchaseId = $(this).data('purchase-id');
-            if (!purchaseId) return;
-            const newTab = window.open('', '_blank');
-            newTab.document.write(`
-                <iframe src="/Vendor/GetPurchaseReceiveNoteReport?purchaseId=${purchaseId}"
-                        style="width:100%; height:100vh; border:none;"></iframe>
-            `);
-        });
-
-
-        function populateItemWiseTable(data) {
+             function populateItemWiseTable(data) {
 
             const tableBody = $("#itemWiseTableData tbody").empty();
             let sn = 1;
@@ -910,6 +883,31 @@
                 });
             });
         }
+
+        $(document).on('click', '.viewPurchaseInvoiceBtn', function (e) {
+            e.preventDefault();
+            const purchaseId = $(this).data('purchase-id');
+            if (!purchaseId) return;
+            const newTab = window.open('', '_blank');
+            newTab.document.write(`
+                <iframe src="/Vendor/GetPurchaseInvoiceReport?purchaseId=${purchaseId}"
+                        style="width:100%; height:100vh; border:none;"></iframe>
+            `);
+        });
+
+        $(document).on('click', '.viewPurchaseReceiveBtn', function (e) {
+            e.preventDefault();
+            const purchaseId = $(this).data('purchase-id');
+            if (!purchaseId) return;
+            const newTab = window.open('', '_blank');
+            newTab.document.write(`
+                <iframe src="/Vendor/GetPurchaseReceiveNoteReport?purchaseId=${purchaseId}"
+                        style="width:100%; height:100vh; border:none;"></iframe>
+            `);
+        });
+
+
+   
         
         function formatDate(dateString) {
             if (!dateString) return "";
@@ -1026,7 +1024,7 @@
              });
          }
 
-         function loadTax(selector = ".tax") {
+        function loadTax(selector = ".tax") {
              return new Promise((resolve, reject) => {
                  $.ajax({
                      url: '@Url.Action("GetTaxes", "Lists")',
@@ -1153,10 +1151,11 @@
         //     }
         // });
 
-                $(document).on("input change", ".tax, .qty, .itemPrice, .itemDiscount", function () {
+         $(document).on("input change", ".tax, .qty, .itemPrice, .itemDiscount", function () {
             const row = $(this).closest("tr");
             calculateRow(row);
         });
+
          function calculateInvoiceTotals() {
             let totalBeforeVat = 0;
             let totalVat = 0;

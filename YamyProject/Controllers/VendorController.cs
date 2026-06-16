@@ -872,10 +872,9 @@ namespace YamyProject.Controllers
                 var parameters = new List<MySqlParameter>();
 
                 // Vendor type
-                query += " AND v.type = @vendorType ";
-                parameters.Add(new MySqlParameter("@vendorType",
-                    isSubcontractor ? "Subcontractor" : "Vendor"));
-
+                //query += " AND v.type = @vendorType ";
+                //parameters.Add(new MySqlParameter("@vendorType",
+                //    isSubcontractor ? "Subcontractor" : "Vendor"));
                 // Filters
                 if (customerId.HasValue)
                 {
@@ -926,9 +925,9 @@ namespace YamyProject.Controllers
                             VendorId = reader["VendorId"] != DBNull.Value ? Convert.ToInt32(reader["VendorId"]) : 0,
                             VendorName = reader["VendorName"]?.ToString(),
                             PaymentMethod = reader["PaymentMethod"]?.ToString(),
-                            Total = reader.GetDecimal("Total"),
-                            Vat = reader.GetDecimal("Vat"),
-                            Net = reader["Net"] != DBNull.Value ? reader.GetDecimal("Net") : 0,
+                            Total = reader["Total"] != DBNull.Value ? Convert.ToDecimal(reader["Total"]) : 0,
+                            Vat = reader["Vat"] != DBNull.Value ? Convert.ToDecimal(reader["Vat"]) : 0,
+                            Net = reader["Net"] != DBNull.Value ? Convert.ToDecimal(reader["Net"]) : 0,
                             WarehouseId = reader["Warehouse_Id"] != DBNull.Value ? reader.GetInt32("Warehouse_Id") : (int?)null,
                             PO_Num = reader["PO_Num"]?.ToString(),
                             BillTo = reader["Bill_To"]?.ToString(),
