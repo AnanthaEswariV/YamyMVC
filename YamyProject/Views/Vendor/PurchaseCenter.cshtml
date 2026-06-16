@@ -593,7 +593,7 @@
                     <td><select class="form-select form-select-sm itemNameSelect"><option value="">Select Item</option></select></td>
                     <td><input type="number" class="form-control form-control-sm qty" value="0" min="0" step="1"></td>
                     <td><input type="number" class="form-control form-control-sm itemPrice" value="0" step="0.01" min="0"></td>
-                    <td><input type="number" class="form-control form-control-sm itemDiscount" value="0" step="0.01" min="0" disabled></td>
+                    <td><input type="number" class="form-control form-control-sm itemDiscount" value="0" step="0.01" min="0"></td>
                     <td class="text-center itemNet">0.00</td>
                     <td><select class="form-select form-select-sm tax"><option value="">-- Select Tax --</option></select></td>
                     <td class="text-center itemAmount">0.00</td>
@@ -1153,11 +1153,10 @@
         //     }
         // });
 
-        $(document).on("change", ".tax, .qty", function() {
+                $(document).on("input change", ".tax, .qty, .itemPrice, .itemDiscount", function () {
             const row = $(this).closest("tr");
             calculateRow(row);
         });
-
          function calculateInvoiceTotals() {
             let totalBeforeVat = 0;
             let totalVat = 0;
@@ -1228,17 +1227,18 @@
                  const taxableAmount = (qty * price) - discount;
                  const calculatedVat = taxableAmount * (taxPercentage / 100);
 
-                 const item = {
-                     ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
-                     Quantity: qty,
-                     CostPrice: parseFloat(row.find('.itemPrice').data('cost-price')) || 0,
-                     Price: price,
-                     TaxId: taxId,
-                     VatPercentage: taxPercentage,
-                     Vat: calculatedVat,
-                     Total: parseFloat(row.find('.itemAmount').text()) || 0,
-                     CostCenterId: parseInt(row.find('.costCenterSelect').val()) || 0,
-                 };
+                       const item = {
+            ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
+            Quantity: qty,
+            CostPrice: parseFloat(row.find('.itemPrice').data('cost-price')) || 0,
+            Price: price,
+            Discount: discount,         
+            TaxId: taxId,
+            VatPercentage: taxPercentage,
+            Vat: calculatedVat,
+            Total: parseFloat(row.find('.itemAmount').text()) || 0,
+            CostCenterId: parseInt(row.find('.costCenterSelect').val()) || 0,
+        };
 
                   invoiceData.Items.push(item);
              });
@@ -1343,7 +1343,7 @@
                                        data-cost-price="${item.costPrice || 0}"
                                        step="0.01">
                             </td>
-                            <td><input type="number" class="form-control form-control-sm itemDiscount" value="${item.discount || 0}" step="0.01" disabled></td>
+                            <td><input type="number" class="form-control form-control-sm itemDiscount" value="${item.discount || 0}" step="0.01"></td>
                             <td class="text-center itemNet">
                                 ${(((item.qty || 0) * displayPrice) - (item.discount || 0)).toFixed(2)}
                             </td>

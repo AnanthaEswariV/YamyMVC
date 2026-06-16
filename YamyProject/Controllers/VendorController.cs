@@ -961,6 +961,7 @@ namespace YamyProject.Controllers
                             ItemName = reader["ItemName"]?.ToString(),
                             Qty = reader["Qty"] != DBNull.Value ? Convert.ToDecimal(reader["Qty"]) : 0,
                             CostPrice = reader["CostPrice"] != DBNull.Value ? Convert.ToDecimal(reader["CostPrice"]) : 0,
+                            Discount = reader["Discount"] != DBNull.Value ? Convert.ToDecimal(reader["Discount"]) : 0,
                             Price = reader["Price"] != DBNull.Value ? Convert.ToDecimal(reader["Price"]) : 0,
                             Vat = reader["ItemVat"] != DBNull.Value ? Convert.ToDecimal(reader["ItemVat"]) : 0,
                             VatP = reader["VatP"] != DBNull.Value ? Convert.ToDecimal(reader["VatP"]) : 0,
@@ -1005,6 +1006,7 @@ namespace YamyProject.Controllers
     pd.price As Price,
     pd.vat AS ItemVat,
     pd.vatp AS VatP,
+    pd.discount AS Discount,
     pd.total AS ItemTotal,
     p.warehouse_id AS Warehouse_Id,
     p.po_num AS PO_Num,
@@ -1048,6 +1050,7 @@ WHERE p.state = 0
     CONCAT(i.code,' - ',i.name) AS ItemName,
     d.qty AS Qty,
     d.cost_price AS CostPrice,
+    d.discount AS Discount,
     d.vat AS ItemVat,
       i.code AS ItemCode,
     d.total AS ItemTotal,
@@ -1681,7 +1684,7 @@ WHERE id=@id;";
                 var (cogsAccountId, assetAccountId) = await GetItemAccounts(conn, transaction, item.ItemId);
 
                 decimal itemCostTotal = item.CostPrice * item.Quantity;   // cost price × qty → Inventory Asset debit
-                decimal itemSalesTotal = item.Price * item.Quantity;       // sales price × qty → Inventory Asset credit
+                decimal itemSalesTotal = (item.Price * item.Quantity) - item.Discount;      // sales price × qty → Inventory Asset credit
                 decimal itemCogsTotal = item.Total;                        // COGS debit
 
                 // ✅ 3a. Inventory Asset — Debit (cost price × qty)
