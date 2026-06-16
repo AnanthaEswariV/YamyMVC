@@ -928,6 +928,8 @@ namespace YamyProject.Controllers
                             Total = reader["Total"] != DBNull.Value ? Convert.ToDecimal(reader["Total"]) : 0,
                             Vat = reader["Vat"] != DBNull.Value ? Convert.ToDecimal(reader["Vat"]) : 0,
                             Net = reader["Net"] != DBNull.Value ? Convert.ToDecimal(reader["Net"]) : 0,
+                            RetentionPercentage = reader["RetentionPercentage"] != DBNull.Value ? Convert.ToDecimal(reader["RetentionPercentage"]) : 0,
+                            RetentionAmount = reader["RetentionAmount"] != DBNull.Value ? Convert.ToDecimal(reader["RetentionAmount"]) : 0,
                             WarehouseId = reader["Warehouse_Id"] != DBNull.Value ? reader.GetInt32("Warehouse_Id") : (int?)null,
                             PO_Num = reader["PO_Num"]?.ToString(),
                             BillTo = reader["Bill_To"]?.ToString(),
@@ -1022,6 +1024,8 @@ namespace YamyProject.Controllers
     p.payment_date AS Payment_Date,
     p.description AS Description,
     p.pay AS Pay,
+    p.retention_percentage AS RetentionPercentage,
+    p.retention_amount AS RetentionAmount,
     i.id AS ItemId,
     pd.cost_center_id AS Cost_Center_Id
 FROM tbl_purchase p
@@ -1059,6 +1063,8 @@ WHERE p.state = 0
     p.purchase_type AS PurchaseType,
     p.fixed_asset_category_id As FixedAssetCategoryId,
     p.city AS City,
+     p.retention_percentage AS RetentionPercentage,
+    p.retention_amount AS RetentionAmount,
   p.sales_man AS Sales_Man,
     p.ship_date AS Ship_Date,
     p.ship_via AS Ship_Via,
@@ -1275,7 +1281,7 @@ WHERE p.state = 0
             if (model.Items == null || !model.Items.Any())
                 return Json(new { status = false, message = "Can't Save Empty Purchase Invoice" });
 
-            if (!await AreDefaultAccountsSet(new List<string> { "Vendor", "Purchase", "Vat Input", "Inventory" }))
+            if (!await AreDefaultAccountsSet(new List<string> { "Vendor", "Purchase", "Vat Input", "Inventory", "Retentions from SubContractors" }))
                 return Json(new { status = false, message = "Default accounts for invoice are not properly configured. Please check your settings." });
 
             for (int i = 0; i < model.Items.Count; i++)
@@ -1335,11 +1341,11 @@ WHERE p.state = 0
 INSERT INTO tbl_purchase
 (date, vendor_id, invoice_id, warehouse_id, po_num, bill_to, city, sales_man,
 ship_date, ship_via, ship_to, payment_method, account_cash_id, payment_terms, payment_date,
-total, vat, net, pay, `change`, created_by, created_date, state, purchase_type, fixed_asset_category_id, description)
+total, vat, net, pay, `change`, created_by, created_date, state, purchase_type, fixed_asset_category_id, description, retention_percentage,retention_amount)
 VALUES
 (@date, @vendor_id, @invoice_id, @warehouse_id, @po_num, @bill_to, @city, @sales_man,
 @ship_date, @ship_via, @ship_to, @payment_method, @account_cash_id, @payment_terms, @payment_date,
-@total, @vat, @net, @pay, @change, @created_by, @created_date, 0, @purchase_type, @fixed_asset_category_id, @description);
+@total, @vat, @net, @pay, @change, @created_by, @created_date, 0, @purchase_type, @fixed_asset_category_id, @description, @retention_percentage,@retention_amount);
 SELECT LAST_INSERT_ID();";
 
                         await using var cmd = new MySqlCommand(insertQuery, conn, transaction);
@@ -1368,6 +1374,8 @@ SELECT LAST_INSERT_ID();";
                         cmd.Parameters.AddWithValue("@purchase_type", model.PurchaseType ?? "");
                         cmd.Parameters.AddWithValue("@fixed_asset_category_id", model.FixedAssetCategoryId);
                         cmd.Parameters.AddWithValue("@description", model.Description ?? "");
+                        cmd.Parameters.AddWithValue("@retention_percentage", model.RetentionPercentage);
+                        cmd.Parameters.AddWithValue("@retention_amount", model.RetentionAmount);
 
                         purchaseId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
@@ -1430,7 +1438,9 @@ po_num=@po_num, bill_to=@bill_to, ship_date=@ship_date,
 ship_via=@ship_via, ship_to=@ship_to, payment_method=@payment_method, account_cash_id=@account_cash_id,
 payment_terms=@payment_terms, payment_date=@payment_date, total=@total,
 vat=@vat, net=@net, pay=@pay, `change`=@change, city=@city,
-purchase_type=@purchase_type, fixed_asset_category_id=@fixed_asset_category_id, description=@description
+purchase_type=@purchase_type, fixed_asset_category_id=@fixed_asset_category_id, description=@description,
+retention_percentage=@retention_percentage,
+retention_amount=@retention_amount
 WHERE id=@id;";
 
                         await using var cmd = new MySqlCommand(updateQuery, conn, transaction);
@@ -1460,6 +1470,8 @@ WHERE id=@id;";
                         cmd.Parameters.AddWithValue("@purchase_type", model.PurchaseType ?? "");
                         cmd.Parameters.AddWithValue("@fixed_asset_category_id", model.FixedAssetCategoryId);
                         cmd.Parameters.AddWithValue("@description", model.Description ?? "");
+                        cmd.Parameters.AddWithValue("@retention_percentage", model.RetentionPercentage);
+                        cmd.Parameters.AddWithValue("@retention_amount", model.RetentionAmount);
 
                         await cmd.ExecuteNonQueryAsync();
 
@@ -1504,21 +1516,28 @@ WHERE id=@id;";
 
         private async Task<bool> AreDefaultAccountsSet(List<string> accountCategories)
         {
-            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            try
             {
-                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-            };
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
 
-            await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-            await conn.OpenAsync();
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
 
-            string categories = string.Join(",", accountCategories.Select(c => $"'{c}'"));
-            string query = $"SELECT COUNT(*) FROM tbl_coa_config WHERE category IN ({categories})";
+                string categories = string.Join(",", accountCategories.Select(c => $"'{c}'"));
+                string query = $"SELECT COUNT(*) FROM tbl_coa_config WHERE category IN ({categories})";
 
-            await using var cmd = new MySqlCommand(query, conn);
-            var count = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                await using var cmd = new MySqlCommand(query, conn);
+                var count = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
-            return count == accountCategories.Count;
+                return count == accountCategories.Count;
+            }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
         }
 
         private async Task<DefaultAccountIds> GetDefaultAccountIds()
@@ -1534,7 +1553,7 @@ WHERE id=@id;";
             var accountIds = new DefaultAccountIds();
 
             var query = @"SELECT category, account_id FROM tbl_coa_config 
-                         WHERE category IN ('Vendor', 'Purchase', 'Vat Input', 'Inventory')";
+                         WHERE category IN ('Vendor', 'Purchase', 'Vat Input', 'Inventory', 'Retentions from SubContractors')";
 
             await using var cmd = new MySqlCommand(query, conn);
             await using var reader = await cmd.ExecuteReaderAsync();
@@ -1557,6 +1576,9 @@ WHERE id=@id;";
                         break;
                     case "Inventory":
                         accountIds.InventoryId = accountId;
+                        break;
+                    case "Retentions from SubContractors":
+                        accountIds.RetentionSubcontractorId = accountId;
                         break;
                 }
             }
@@ -1675,7 +1697,26 @@ WHERE id=@id;";
                     "Purchase Invoice", "Purchase Invoice",
                     $"Vat Input For Invoice No. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
             }
-
+            // ✅ Retention from subcontractors — Credit side
+            if (model.RetentionAmount > 0)
+            {
+                await AddTransactionEntry(
+                    conn,
+                    transaction,
+                    model.Date.Date,
+                    accountIds.RetentionSubcontractorId.ToString(),
+                    "0",
+                    model.RetentionAmount.ToString(CultureInfo.InvariantCulture),
+                    purchaseId.ToString(),
+                    model.VendorId.ToString(),
+                    "Purchase Invoice",
+                    "Purchase Invoice",
+                    $"Retention From Subcontractors For Invoice No. {model.InvoiceCode}",
+                    userId,
+                    DateTime.Now.Date,
+                    model.InvoiceCode
+                );
+            }
             // ✅ 3. Per-item: Inventory Asset + COGS journal entries (like QuickBooks pattern)
             foreach (var item in model.Items)
             {
@@ -4620,12 +4661,10 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @humId, @tType, 'Deb
 
         #region Material Request
 
-
         public IActionResult MaterialRequest()
         {
             return View();
         }
-
 
         #endregion
 

@@ -2127,6 +2127,8 @@ namespace YamyProject.Core.Models
         public decimal Pay { get; set; }
         public string SalesMan { get; set; }
         public int? ProjectId { get; set; }
+        public decimal RetentionPercentage { get; set; }
+        public decimal RetentionAmount { get; set; }
         public List<PurchaseItemDto> Items { get; set; } = new();
     }
 
@@ -2170,6 +2172,8 @@ namespace YamyProject.Core.Models
         public string PurchaseType { get; set; }
         public int FixedAssetCategoryId { get; set; }
         public string Description { get; set; }
+        public decimal RetentionPercentage { get; set; }
+        public decimal RetentionAmount { get; set; }
         public List<PurchaseItemRequest> Items { get; set; }
     }
 
@@ -2195,6 +2199,7 @@ namespace YamyProject.Core.Models
         public int VatId { get; set; }
         public int PurchaseInvoiceId { get; set; }
         public int InventoryId { get; set; }
+        public int RetentionSubcontractorId { get; set; }
     }
     public class PurchaseOrderRequest
     {

@@ -131,8 +131,9 @@
                     <tbody></tbody>
                 </table>
             </div>
+           
         </div>
-
+       
         <!-- Item Wise method: Single combined table -->
         <div id="itemWiseTable" style="display:none; height: 80vh; overflow-y: auto;">
             <table class="table table-striped" id="itemWiseTableData">
@@ -308,6 +309,8 @@
                         </div>
                     </div>
 
+
+
                     <!-- Table -->
                     <div class="table-responsive mt-3">
                         <table class="table table-bordered table-sm align-middle">
@@ -333,26 +336,56 @@
                             <i class="bi bi-plus-circle"></i> Add Row
                         </button>
                     </div>
-
+                  
                     <!-- Notes & Totals -->
                     <div class="row mt-3">
+                        <!-- Notes -->
                         <div class="col-md-8">
                             <label class="form-label">Notes</label>
-                            <textarea class="form-control" rows="4"></textarea>
+                            <textarea class="form-control" rows="4" id="notes"></textarea>
+
+                            <!-- Small Retention Box -->
+                            <div class="border rounded p-2 mt-2" style="max-width:300px;">
+                                <h6 class="mb-2">Retention</h6>
+
+                                <div class="row g-2">
+                                    <div class="col-4">
+                                        <label class="form-label mb-0">%</label>
+                                        <input type="number"
+                                               class="form-control form-control-sm"
+                                               id="retentionPercentage"
+                                               value="0">
+                                    </div>
+
+                                    <div class="col-8">
+                                        <label class="form-label mb-0">Amount</label>
+                                        <input type="text"
+                                               class="form-control form-control-sm"
+                                               id="retentionAmount"
+                                               >
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
+                        <!-- Totals -->
                         <div class="col-md-4">
                             <div class="mb-2">
                                 <label>Total Before VAT</label>
-                                <input class="form-control form-control-sm text-end" id="totalBeforeVat" readonly>
+                                <input class="form-control form-control-sm text-end"
+                                       id="totalBeforeVat" readonly>
                             </div>
+
                             <div class="mb-2">
                                 <label>Total VAT</label>
-                                <input class="form-control form-control-sm text-end" id="totalVat" readonly>
+                                <input class="form-control form-control-sm text-end"
+                                       id="totalVat" readonly>
                             </div>
+
                             <div>
                                 <label>Net Amount</label>
-                                <input class="form-control form-control-sm text-end fw-bold" id="netAmount" readonly>
+                                <input class="form-control form-control-sm text-end fw-bold"
+                                       id="netAmount" readonly>
                             </div>
                         </div>
                     </div>
@@ -997,7 +1030,7 @@
          let itemsList = [];
          let taxesList = [];
          let salesData = [];
-
+                 let retentionManualEdit = false;
          function loadItem(selector = ".itemNameSelect") {
              return new Promise((resolve, reject) => {
                  $.ajax({
@@ -1109,14 +1142,14 @@
 
             // Net = Quantity * Price - Discount
             const net = qty * price - discount;
-            row.find("td:nth-child(7)").text(net.toFixed(2)); // Set the "Net" field
+           row.find(".itemNet").text(net.toFixed(2));
 
             const taxPercent = parseFloat(row.find(".tax option:selected").data("value")) || 0; // Tax percentage
             const taxAmount = net * (taxPercent / 100); // Calculate tax
             const amount = net + taxAmount; // Total amount including tax
 
             row.find(".tax").attr("title", `Tax Amount: ${taxAmount.toFixed(2)}`); // Set tax title
-            row.find("td:nth-child(9)").text(amount.toFixed(2)); // Set the "Amount" field
+           row.find(".itemAmount").text(amount.toFixed(2));
 
             // Update the invoice totals (optional)
             calculateInvoiceTotals();
@@ -1156,26 +1189,52 @@
             calculateRow(row);
         });
 
-         function calculateInvoiceTotals() {
+               function calculateInvoiceTotals() {
             let totalBeforeVat = 0;
             let totalVat = 0;
 
             $('#salesModal tbody tr').each(function () {
                 const row = $(this);
 
-                const net = parseFloat(row.find("td:nth-child(7)").text()) || 0;
-                const amount = parseFloat(row.find("td:nth-child(9)").text()) || 0;
+                const net = parseFloat(row.find(".itemNet").text()) || 0;
+                const amount = parseFloat(row.find(".itemAmount").text()) || 0;
 
                 totalBeforeVat += net;
                 totalVat += (amount - net);
             });
 
-            const netAmount = totalBeforeVat + totalVat;
+            let retentionPercentage = parseFloat($('#retentionPercentage').val()) || 0;
+            let retentionAmount = parseFloat($('#retentionAmount').val()) || 0;
+
+            if (!retentionManualEdit) {
+                retentionAmount = totalBeforeVat * (retentionPercentage / 100);
+                $('#retentionAmount').val(retentionAmount.toFixed(2));
+            } else {
+                retentionPercentage = totalBeforeVat > 0
+                    ? (retentionAmount / totalBeforeVat) * 100
+                    : 0;
+
+                $('#retentionPercentage').val(retentionPercentage.toFixed(2));
+            }
+
+            const netAmount = totalBeforeVat + totalVat - retentionAmount;
 
             $('#totalBeforeVat').val(totalBeforeVat.toFixed(2));
             $('#totalVat').val(totalVat.toFixed(2));
             $('#netAmount').val(netAmount.toFixed(2));
         }
+
+            
+
+        $(document).on("input", "#retentionPercentage", function () {
+            retentionManualEdit = false;
+            calculateInvoiceTotals();
+        });
+
+        $(document).on("input", "#retentionAmount", function () {
+            retentionManualEdit = true;
+            calculateInvoiceTotals();
+        });
 
          $('#purchaseInvoiceForm').on('submit', function (e) {
             e.preventDefault();
@@ -1211,6 +1270,8 @@
             FixedAssetCategoryId: parseInt($('#fixedAssetCategory').val()) || 0,
             Description: $('textarea').val().trim(),
             WarehouseId: parseInt($('#warehouseDropdown').val()) || 0,
+            RetentionPercentage: parseFloat($('#retentionPercentage').val()) || 0,
+            RetentionAmount: parseFloat($('#retentionAmount').val()) || 0,
             Items: []
         };
 
@@ -1266,7 +1327,7 @@
 
          function openSalesModal(invoice) {
             console.log(invoice);
-
+            retentionManualEdit = false;
             // 🔹 Header
             $("#customerName").val(invoice.vendorId || 0);
             $("#date").val(invoice.date ? invoice.date.split('T')[0] : '');
@@ -1288,7 +1349,8 @@
             $("#warehouseDropdown").val(invoice.warehouseId || '');
             $('#purchaseType').val(invoice.purchaseType || 'Inventory');
             $('#fixedAssetCategory').val(invoice.fixedAssetCategoryId || '');
-
+                  $("#retentionPercentage").val(invoice.retentionPercentage || 0);
+        $("#retentionAmount").val(invoice.retentionAmount || 0);
             // 🔹 UI Toggles
             if (invoice.purchaseType === 'Fixed Assets') {
                 $('#fixedAssetCategoryWrapper').show();
