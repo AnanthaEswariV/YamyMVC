@@ -109,8 +109,8 @@
                             <th>Payment Method</th>
                             <th>Total</th>
                             <th>VAT</th>
+                             <th>Retention Amount</th>
                             <th>Net</th>
-                            <th>JV No</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -739,8 +739,8 @@
                             <td>${sale.paymentMethod}</td>
                             <td>${sale.total.toFixed(2)}</td>
                             <td>${sale.vat.toFixed(2)}</td>
-                            <td>${sale.net.toFixed(2)}</td>
-                            <td></td>
+                             <td>${sale.retentionAmount.toFixed(2)}</td>
+                           <td>${(sale.total - sale.retentionAmount).toFixed(2)}</td>
                             <td>
                                 <button class="btn btn-sm btn-primary editSalesQuotationBtn">
                                     <i class="fas fa-pen"></i>

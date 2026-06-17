@@ -1281,7 +1281,7 @@ WHERE p.state = 0
             if (model.Items == null || !model.Items.Any())
                 return Json(new { status = false, message = "Can't Save Empty Purchase Invoice" });
 
-            if (!await AreDefaultAccountsSet(new List<string> { "Vendor", "Purchase", "Vat Input", "Inventory", "Retentions from SubContractors" }))
+            if (!await AreDefaultAccountsSet(new List<string> { "Vendor", "Purchase", "Vat Input", "Inventory", "Retention" }))
                 return Json(new { status = false, message = "Default accounts for invoice are not properly configured. Please check your settings." });
 
             for (int i = 0; i < model.Items.Count; i++)
@@ -1553,7 +1553,7 @@ WHERE id=@id;";
             var accountIds = new DefaultAccountIds();
 
             var query = @"SELECT category, account_id FROM tbl_coa_config 
-                         WHERE category IN ('Vendor', 'Purchase', 'Vat Input', 'Inventory', 'Retentions from SubContractors')";
+                         WHERE category IN ('Vendor', 'Purchase', 'Vat Input', 'Inventory', 'Retention')";
 
             await using var cmd = new MySqlCommand(query, conn);
             await using var reader = await cmd.ExecuteReaderAsync();
@@ -1577,7 +1577,7 @@ WHERE id=@id;";
                     case "Inventory":
                         accountIds.InventoryId = accountId;
                         break;
-                    case "Retentions from SubContractors":
+                    case "Retention":
                         accountIds.RetentionSubcontractorId = accountId;
                         break;
                 }

@@ -439,8 +439,8 @@ namespace YamyProject.Controllers
 
         #region PurchaseInvoice
 
-        private int _vendorApAccountId, _purchaseAccountId, _vatInputAccountId;
-
+        private int _vendorApAccountId, _purchaseAccountId, _vatInputAccountId, _retentionAccountId;
+        private readonly Dictionary<string, decimal> _retentionByInvoice = new();
         [HttpPost]
         public async Task<IActionResult> ImportPurchaseInvoices(IFormFile file)
             {
@@ -529,21 +529,23 @@ namespace YamyProject.Controllers
                             }
                             int projectId = await ResolveProjectIdAsyncs(conn, tx, headRow.Project);
 
-                            // invoice totals (after discount on first item)
-                            decimal totalBefore = itemLines.Sum(l => l.Total);
-                            decimal vat = itemLines.Sum(l => l.Vat);
-                            decimal net = totalBefore + vat;
-                            bool isCash = _paymentMethod == "Cash";
+                        // invoice totals (after discount on first item)
+                        decimal totalBefore = itemLines.Sum(l => l.Total);
+                        decimal vat = itemLines.Sum(l => l.Vat);
+                        decimal net = totalBefore + vat;
+                        bool isCash = _paymentMethod == "Cash";
+                        decimal retentionAmount = _retentionByInvoice.TryGetValue(invNo, out var ra) ? ra : 0m;
+                        decimal retentionPct = net > 0 ? Math.Round(retentionAmount / net * 100m, 2) : 0m;
 
-                            // invoice number = Excel Invoice No
-                            string invoiceCode = int.TryParse(invNo, out var n) ? $"PI-{n:D4}" : $"PI-{invNo}";
+                        // invoice number = Excel Invoice No
+                        string invoiceCode = int.TryParse(invNo, out var n) ? $"PI-{n:D4}" : $"PI-{invNo}";
 
                             // 1) header
                             long purchaseId = await InsertPurchaseHeaderAsync(conn, tx, headRow, invoiceCode,
-                                                    vendorId, totalBefore, vat, net, isCash);
+                                                    vendorId, totalBefore, vat, net, isCash, retentionAmount, retentionPct);
 
-                            // 2) detail rows (one per item)
-                            foreach (var it in itemLines)
+                        // 2) detail rows (one per item)
+                        foreach (var it in itemLines)
                                 await InsertPurchaseDetailAsync(conn, tx, purchaseId, projectId, it);
 
                             // 3) transactions
@@ -569,13 +571,23 @@ namespace YamyProject.Controllers
                                     "Purchase Invoice", debitDesc,
                                     $"Vat Input For Invoice No. {invoiceCode}", _userId, DateTime.Now.Date, invoiceCode);
 
-                            // 3c) Credit Vendor A/P (net)
+
+                        // 3c) Credit Vendor A/P — reduced by retention so the entry balances
+                        decimal vendorCredit = net - retentionAmount;
+                        if (vendorCredit != 0)
                             await AddTransactionEntryAsyncs(conn, tx, headRow.Date, apAccount,
-                                0, net, purchaseId.ToString(), vendorId.ToString(),
+                                0, vendorCredit, purchaseId.ToString(), vendorId.ToString(),
                                 "Purchase Invoice", debitDesc,
                                 $"Purchase Invoice NO. {invoiceCode}", _userId, DateTime.Now.Date, invoiceCode);
 
-                            await tx.CommitAsync();
+                        // 3d) Credit Retention Payable (held back from subcontractor)
+                        if (retentionAmount > 0 && _retentionAccountId > 0)
+                            await AddTransactionEntryAsyncs(conn, tx, headRow.Date, _retentionAccountId.ToString(),
+                                0, retentionAmount, purchaseId.ToString(), vendorId.ToString(),
+                                "Purchase Invoice", debitDesc,
+                                $"Retention From Subcontractors For Invoice No. {invoiceCode}", _userId, DateTime.Now.Date, invoiceCode);
+
+                        await tx.CommitAsync();
                             success++;
                             Console.WriteLine($"[OK]   INV={invNo} code={invoiceCode} items={itemLines.Count} disc={discTotal} net={net} id={purchaseId}");
                         }
@@ -611,8 +623,8 @@ namespace YamyProject.Controllers
                 _vendorApAccountId = acc.TryGetValue("Vendor", out var v) ? v : 0;
                 _purchaseAccountId = acc.TryGetValue("Purchase", out var p) ? p : 0;
                 _vatInputAccountId = acc.TryGetValue("Vat Input", out var t) ? t : 0;
-
-                if (_vendorApAccountId <= 0 || _purchaseAccountId <= 0 || _vatInputAccountId <= 0)
+                _retentionAccountId = acc.TryGetValue("Retention", out var rs) ? rs : 0;  
+            if (_vendorApAccountId <= 0 || _purchaseAccountId <= 0 || _vatInputAccountId <= 0)
                     throw new Exception("tbl_coa_config missing one of: Vendor / Purchase / Vat Input.");
             }
 
@@ -648,19 +660,19 @@ namespace YamyProject.Controllers
 
         private async Task<long> InsertPurchaseHeaderAsync(MySqlConnection conn, MySqlTransaction tx,
             PurchaseRow row, string invoiceCode, int vendorId,
-            decimal totalBefore, decimal vat, decimal net, bool isCash)
-            {
+            decimal totalBefore, decimal vat, decimal net, bool isCash, decimal retentionAmount, decimal retentionPct)
+        {
                 var sql = @"
                 INSERT INTO tbl_purchase
                 (date, vendor_id, invoice_id, warehouse_id, po_num, bill_to, city, sales_man,
                  ship_date, ship_via, ship_to, payment_method, account_cash_id, payment_terms, payment_date,
                  total, vat, net, pay, `change`, created_by, created_date, state, purchase_type,
-                 fixed_asset_category_id)
+                 fixed_asset_category_id, retention_percentage, retention_amount)
                 VALUES
                 (@date, @vendor_id, @invoice_id, @warehouse_id, @po_num, @bill_to, @city, @sales_man,
                  @ship_date, @ship_via, @ship_to, @payment_method, @account_cash_id, @payment_terms, @payment_date,
                  @total, @vat, @net, @pay, @change, @created_by, @created_date, 0, @purchase_type,
-                 0);
+                 0, @retention_percentage, @retention_amount);
                 SELECT LAST_INSERT_ID();";
 
                 using var cmd = new MySqlCommand(sql, conn, tx);
@@ -668,7 +680,7 @@ namespace YamyProject.Controllers
                 cmd.Parameters.AddWithValue("@vendor_id", vendorId);
                 cmd.Parameters.AddWithValue("@invoice_id", invoiceCode);
                 cmd.Parameters.AddWithValue("@warehouse_id", _warehouseId);
-                cmd.Parameters.AddWithValue("@po_num", row.InvoiceNo ?? "");   // source invoice no for traceability
+                cmd.Parameters.AddWithValue("@po_num", row.InvoiceNo ?? "");   
                 cmd.Parameters.AddWithValue("@bill_to", row.Vendor ?? "");
                 cmd.Parameters.AddWithValue("@city", _city);
                 cmd.Parameters.AddWithValue("@sales_man", _salesMan);
@@ -687,8 +699,10 @@ namespace YamyProject.Controllers
                 cmd.Parameters.AddWithValue("@created_by", _userId);
                 cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
                 cmd.Parameters.AddWithValue("@purchase_type", _purchaseType);
+                cmd.Parameters.AddWithValue("@retention_percentage", retentionPct);     
+                cmd.Parameters.AddWithValue("@retention_amount", retentionAmount);
 
-                return Convert.ToInt64(await cmd.ExecuteScalarAsync());
+            return Convert.ToInt64(await cmd.ExecuteScalarAsync());
             }
 
         private async Task InsertPurchaseDetailAsync(MySqlConnection conn, MySqlTransaction tx,
@@ -769,8 +783,13 @@ namespace YamyProject.Controllers
                     else if (!TryParseDates(dateCell, out date)) { Console.WriteLine($"Row {r.RowNumber()} bad date: {dateCell}"); continue; }
 
                     string acctCode = r.Cell("F").GetString().Trim();
-
-                    rows.Add(new PurchaseRow
+                    string oInv = r.Cell("O").GetString().Trim();
+                    if (oInv.Length > 0 && !oInv.Equals("Invoice", StringComparison.OrdinalIgnoreCase))
+                    {
+                        decimal retAmt = ParseExcelNums(r.Cell("P"));
+                        _retentionByInvoice[oInv] = retAmt;   
+                    }
+                rows.Add(new PurchaseRow
                     {
                         Date = date,
                         InvoiceNo = invNo,
@@ -780,7 +799,7 @@ namespace YamyProject.Controllers
                         Project = r.Cell("H").GetString().Trim(),
                         Qty = ParseExcelNums(r.Cell("I")),
                         Price = ParseExcelNums(r.Cell("J")),
-                        Total = ParseExcelNums(r.Cell("K")),  // total after disc, before VAT
+                        Total = ParseExcelNums(r.Cell("K")), 
                         Vat = ParseExcelNums(r.Cell("L")),
                         IsDiscount = acctCode.Equals("Discount", StringComparison.OrdinalIgnoreCase),
                         Discount = 0m
