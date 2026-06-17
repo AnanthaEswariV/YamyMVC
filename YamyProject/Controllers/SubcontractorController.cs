@@ -1123,6 +1123,257 @@ namespace YamyProject.Controllers
         {
             return View();
         }
+        [HttpGet]
+        public async Task<IActionResult> GetPurchases(
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    int? customerId,
+    string paymentMethod,
+    string selectionMethod = "Default",
+    int page = 1,
+    int pageSize = 20)
+        {
+            return await GetPurchasesByVendorType(
+                "Subcontractor", dateFrom, dateTo, customerId, paymentMethod, selectionMethod, page, pageSize);
+        }
+        private async Task<IActionResult> GetPurchasesByVendorType(
+    string vendorType,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    int? customerId,
+    string paymentMethod,
+    string selectionMethod,
+    int page,
+    int pageSize)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = selectionMethod == "Default"
+                    ? GetPurchaseDefaultQuery()
+                    : GetPurchaseDetailedQuery();
+
+                var parameters = new List<MySqlParameter>();
+
+                // Vendor type filter — now active
+                query += " AND v.type = @vendorType ";
+                parameters.Add(new MySqlParameter("@vendorType", vendorType));
+
+                if (customerId.HasValue)
+                {
+                    query += " AND p.vendor_id = @vendorId ";
+                    parameters.Add(new MySqlParameter("@vendorId", customerId.Value));
+                }
+
+                if (!string.IsNullOrEmpty(paymentMethod))
+                {
+                    query += " AND LOWER(p.payment_method) = LOWER(@payment) ";
+                    parameters.Add(new MySqlParameter("@payment", paymentMethod.Trim()));
+                }
+
+                if (dateFrom.HasValue)
+                {
+                    query += " AND p.date >= @dateFrom ";
+                    parameters.Add(new MySqlParameter("@dateFrom", dateFrom.Value.Date));
+                }
+
+                if (dateTo.HasValue)
+                {
+                    query += " AND p.date <= @dateTo ";
+                    parameters.Add(new MySqlParameter("@dateTo", dateTo.Value.Date));
+                }
+
+                var purchases = new List<PurchaseDto>();
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                PurchaseDto currentPurchase = null;
+                int lastPurchaseId = -1;
+
+                while (await reader.ReadAsync())
+                {
+                    int purchaseId = reader.GetInt32("Id");
+
+                    if (purchaseId != lastPurchaseId)
+                    {
+                        currentPurchase = new PurchaseDto
+                        {
+                            Id = purchaseId,
+                            Date = reader.GetDateTime("Date"),
+                            InvoiceNo = reader["InvoiceNo"]?.ToString(),
+                            VendorId = reader["VendorId"] != DBNull.Value ? Convert.ToInt32(reader["VendorId"]) : 0,
+                            VendorName = reader["VendorName"]?.ToString(),
+                            PaymentMethod = reader["PaymentMethod"]?.ToString(),
+                            Total = reader["Total"] != DBNull.Value ? Convert.ToDecimal(reader["Total"]) : 0,
+                            Vat = reader["Vat"] != DBNull.Value ? Convert.ToDecimal(reader["Vat"]) : 0,
+                            Net = reader["Net"] != DBNull.Value ? Convert.ToDecimal(reader["Net"]) : 0,
+                            RetentionPercentage = reader["RetentionPercentage"] != DBNull.Value ? Convert.ToDecimal(reader["RetentionPercentage"]) : 0,
+                            RetentionAmount = reader["RetentionAmount"] != DBNull.Value ? Convert.ToDecimal(reader["RetentionAmount"]) : 0,
+                            WarehouseId = reader["Warehouse_Id"] != DBNull.Value ? reader.GetInt32("Warehouse_Id") : (int?)null,
+                            PO_Num = reader["PO_Num"]?.ToString(),
+                            BillTo = reader["Bill_To"]?.ToString(),
+                            PurchaseType = reader["PurchaseType"]?.ToString(),
+                            FixedAssetCategoryId = reader["FixedAssetCategoryId"] != DBNull.Value ? reader.GetInt32("FixedAssetCategoryId") : (int?)null,
+                            City = reader["City"]?.ToString(),
+                            Ship_Date = reader["Ship_Date"] != DBNull.Value ? reader.GetDateTime("Ship_Date") : (DateTime?)null,
+                            Ship_Via = reader["Ship_Via"]?.ToString(),
+                            Ship_To = reader["Ship_To"]?.ToString(),
+                            Account_Cash_Id = reader["Account_Cash_Id"] != DBNull.Value ? reader.GetInt32("Account_Cash_Id") : (int?)null,
+                            Payment_Terms = reader["Payment_Terms"]?.ToString(),
+                            Payment_Date = reader["Payment_Date"] != DBNull.Value ? reader.GetDateTime("Payment_Date") : (DateTime?)null,
+                            Description = reader["Description"]?.ToString(),
+                            SalesMan = reader["Sales_Man"]?.ToString(),
+                            Pay = reader["Pay"] != DBNull.Value ? reader.GetDecimal("Pay") : 0,
+                            Items = new List<PurchaseItemDto>()
+                        };
+
+                        purchases.Add(currentPurchase);
+                        lastPurchaseId = purchaseId;
+                    }
+
+                    if (reader["ItemId"] != DBNull.Value)
+                    {
+                        currentPurchase.Items.Add(new PurchaseItemDto
+                        {
+                            ItemId = reader["ItemId"] != DBNull.Value ? Convert.ToInt32(reader["ItemId"]) : 0,
+                            ItemCode = reader["ItemCode"]?.ToString(),
+                            ItemName = reader["ItemName"]?.ToString(),
+                            Qty = reader["Qty"] != DBNull.Value ? Convert.ToDecimal(reader["Qty"]) : 0,
+                            CostPrice = reader["CostPrice"] != DBNull.Value ? Convert.ToDecimal(reader["CostPrice"]) : 0,
+                            Discount = reader["Discount"] != DBNull.Value ? Convert.ToDecimal(reader["Discount"]) : 0,
+                            Price = reader["Price"] != DBNull.Value ? Convert.ToDecimal(reader["Price"]) : 0,
+                            Vat = reader["ItemVat"] != DBNull.Value ? Convert.ToDecimal(reader["ItemVat"]) : 0,
+                            VatP = reader["VatP"] != DBNull.Value ? Convert.ToDecimal(reader["VatP"]) : 0,
+                            Total = reader["ItemTotal"] != DBNull.Value ? Convert.ToDecimal(reader["ItemTotal"]) : 0,
+                            Cost_Center_Id = reader["Cost_Center_Id"] != DBNull.Value ? Convert.ToInt32(reader["Cost_Center_Id"]) : (int?)null
+                        });
+                    }
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    page,
+                    pageSize,
+                    data = purchases
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        private string GetPurchaseDefaultQuery()
+        {
+            return @"
+      SELECT 
+    p.id AS Id,
+    p.date AS Date,
+    p.invoice_id AS InvoiceNo,
+    v.id AS VendorId,
+    CONCAT(v.code,' - ',v.name) AS VendorName,
+    p.payment_method AS PaymentMethod,
+    p.total AS Total,
+    p.vat AS Vat,
+    p.net AS Net,
+    i.code AS ItemCode,
+    i.name AS ItemName,
+    pd.qty AS Qty,
+    pd.cost_price AS CostPrice,
+    pd.price As Price,
+    pd.vat AS ItemVat,
+    pd.vatp AS VatP,
+    pd.discount AS Discount,
+    pd.total AS ItemTotal,
+    p.warehouse_id AS Warehouse_Id,
+    p.po_num AS PO_Num,
+    p.bill_to AS Bill_To,
+    p.sales_man AS Sales_Man,
+    p.purchase_type AS PurchaseType,
+    p.fixed_asset_category_id As FixedAssetCategoryId,
+    p.city AS City,
+    p.ship_date AS Ship_Date,
+    p.ship_via AS Ship_Via,
+    p.ship_to AS Ship_To,
+    p.account_cash_id AS Account_Cash_Id,
+    p.payment_terms AS Payment_Terms,
+    p.payment_date AS Payment_Date,
+    p.description AS Description,
+    p.pay AS Pay,
+    p.retention_percentage AS RetentionPercentage,
+    p.retention_amount AS RetentionAmount,
+    i.id AS ItemId,
+    pd.cost_center_id AS Cost_Center_Id
+FROM tbl_purchase p
+INNER JOIN tbl_vendor v ON p.vendor_id = v.id
+LEFT JOIN tbl_purchase_details pd ON p.id = pd.purchase_id
+LEFT JOIN tbl_items i ON pd.item_id = i.id
+WHERE p.state = 0
+    ";
+        }
+
+        private string GetPurchaseDetailedQuery()
+        {
+            return @"
+      SELECT
+    p.id AS Id,
+    p.date AS Date,
+    p.invoice_id AS InvoiceNo,
+    CONCAT(v.code,' - ',v.name) AS VendorName,
+    p.payment_method AS PaymentMethod,
+    p.total AS Total,
+    p.vat AS Vat,
+    d.vatp AS VatP,
+    p.net AS Net,
+    v.id AS VendorId,
+    CONCAT(i.code,' - ',i.name) AS ItemName,
+    d.qty AS Qty,
+    d.cost_price AS CostPrice,
+    d.discount AS Discount,
+    d.vat AS ItemVat,
+      i.code AS ItemCode,
+    d.total AS ItemTotal,
+    p.warehouse_id AS Warehouse_Id,
+    p.po_num AS PO_Num,
+    p.bill_to AS Bill_To,
+    p.purchase_type AS PurchaseType,
+    p.fixed_asset_category_id As FixedAssetCategoryId,
+    p.city AS City,
+     p.retention_percentage AS RetentionPercentage,
+    p.retention_amount AS RetentionAmount,
+  p.sales_man AS Sales_Man,
+    p.ship_date AS Ship_Date,
+    p.ship_via AS Ship_Via,
+    p.ship_to AS Ship_To,
+    p.account_cash_id AS Account_Cash_Id,
+    p.payment_terms AS Payment_Terms,
+    p.payment_date AS Payment_Date,
+    p.description AS Description,
+    p.pay AS Pay,
+    i.id As ItemId,
+    d.price As Price,
+    d.cost_center_id AS Cost_Center_Id
+FROM tbl_purchase p
+INNER JOIN tbl_purchase_details d ON p.id = d.purchase_id
+INNER JOIN tbl_items i ON d.item_id = i.id
+INNER JOIN tbl_vendor v ON p.vendor_id = v.id
+WHERE p.state = 0
+
+    ";
+        }
+
 
         #endregion
 

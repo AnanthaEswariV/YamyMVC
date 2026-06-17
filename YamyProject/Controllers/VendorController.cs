@@ -848,10 +848,22 @@ namespace YamyProject.Controllers
     DateTime? dateTo,
     int? customerId,
     string paymentMethod,
-    bool isSubcontractor = false,
     string selectionMethod = "Default",
     int page = 1,
     int pageSize = 20)
+        {
+            return await GetPurchasesByVendorType(
+                "Vendor", dateFrom, dateTo, customerId, paymentMethod, selectionMethod, page, pageSize);
+        }
+        private async Task<IActionResult> GetPurchasesByVendorType(
+      string vendorType,
+      DateTime? dateFrom,
+      DateTime? dateTo,
+      int? customerId,
+      string paymentMethod,
+      string selectionMethod,
+      int page,
+      int pageSize)
         {
             try
             {
@@ -871,11 +883,10 @@ namespace YamyProject.Controllers
 
                 var parameters = new List<MySqlParameter>();
 
-                // Vendor type
-                //query += " AND v.type = @vendorType ";
-                //parameters.Add(new MySqlParameter("@vendorType",
-                //    isSubcontractor ? "Subcontractor" : "Vendor"));
-                // Filters
+                // Vendor type filter — now active
+                query += " AND v.type = @vendorType ";
+                parameters.Add(new MySqlParameter("@vendorType", vendorType));
+
                 if (customerId.HasValue)
                 {
                     query += " AND p.vendor_id = @vendorId ";
@@ -899,7 +910,6 @@ namespace YamyProject.Controllers
                     query += " AND p.date <= @dateTo ";
                     parameters.Add(new MySqlParameter("@dateTo", dateTo.Value.Date));
                 }
-
 
                 var purchases = new List<PurchaseDto>();
 
@@ -952,7 +962,6 @@ namespace YamyProject.Controllers
                         lastPurchaseId = purchaseId;
                     }
 
-                    // Item (only in Detailed mode)
                     if (reader["ItemId"] != DBNull.Value)
                     {
                         currentPurchase.Items.Add(new PurchaseItemDto
@@ -970,7 +979,6 @@ namespace YamyProject.Controllers
                             Cost_Center_Id = reader["Cost_Center_Id"] != DBNull.Value ? Convert.ToInt32(reader["Cost_Center_Id"]) : (int?)null
                         });
                     }
-
                 }
 
                 return Ok(new
