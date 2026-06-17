@@ -540,9 +540,9 @@ namespace YamyProject.Controllers
                         // invoice number = Excel Invoice No
                         string invoiceCode = int.TryParse(invNo, out var n) ? $"PI-{n:D4}" : $"PI-{invNo}";
 
-                            // 1) header
-                            long purchaseId = await InsertPurchaseHeaderAsync(conn, tx, headRow, invoiceCode,
-                                                    vendorId, totalBefore, vat, net, isCash, retentionAmount, retentionPct);
+                        // 1) header
+                        long purchaseId = await InsertPurchaseHeaderAsync(conn, tx, headRow, invoiceCode,
+                     vendorId, projectId, totalBefore, vat, net, isCash, retentionAmount, retentionPct);
 
                         // 2) detail rows (one per item)
                         foreach (var it in itemLines)
@@ -659,20 +659,20 @@ namespace YamyProject.Controllers
             }
 
         private async Task<long> InsertPurchaseHeaderAsync(MySqlConnection conn, MySqlTransaction tx,
-            PurchaseRow row, string invoiceCode, int vendorId,
-            decimal totalBefore, decimal vat, decimal net, bool isCash, decimal retentionAmount, decimal retentionPct)
+         PurchaseRow row, string invoiceCode, int vendorId, int projectId,
+         decimal totalBefore, decimal vat, decimal net, bool isCash, decimal retentionAmount, decimal retentionPct)
         {
                 var sql = @"
                 INSERT INTO tbl_purchase
                 (date, vendor_id, invoice_id, warehouse_id, po_num, bill_to, city, sales_man,
                  ship_date, ship_via, ship_to, payment_method, account_cash_id, payment_terms, payment_date,
                  total, vat, net, pay, `change`, created_by, created_date, state, purchase_type,
-                 fixed_asset_category_id, retention_percentage, retention_amount)
+                 fixed_asset_category_id, project_id,retention_percentage, retention_amount)
                 VALUES
                 (@date, @vendor_id, @invoice_id, @warehouse_id, @po_num, @bill_to, @city, @sales_man,
                  @ship_date, @ship_via, @ship_to, @payment_method, @account_cash_id, @payment_terms, @payment_date,
                  @total, @vat, @net, @pay, @change, @created_by, @created_date, 0, @purchase_type,
-                 0, @retention_percentage, @retention_amount);
+                 0, @project_id,@retention_percentage, @retention_amount);
                 SELECT LAST_INSERT_ID();";
 
                 using var cmd = new MySqlCommand(sql, conn, tx);
@@ -699,6 +699,7 @@ namespace YamyProject.Controllers
                 cmd.Parameters.AddWithValue("@created_by", _userId);
                 cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
                 cmd.Parameters.AddWithValue("@purchase_type", _purchaseType);
+                cmd.Parameters.AddWithValue("@project_id", projectId);
                 cmd.Parameters.AddWithValue("@retention_percentage", retentionPct);     
                 cmd.Parameters.AddWithValue("@retention_amount", retentionAmount);
 
