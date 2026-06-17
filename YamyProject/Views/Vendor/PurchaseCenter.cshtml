@@ -740,7 +740,7 @@
                             <td>${sale.total.toFixed(2)}</td>
                             <td>${sale.vat.toFixed(2)}</td>
                              <td>${sale.retentionAmount.toFixed(2)}</td>
-                           <td>${(sale.total - sale.retentionAmount).toFixed(2)}</td>
+                           <td>${(sale.total + sale.vat - sale.retentionAmount).toFixed(2)}</td>
                             <td>
                                 <button class="btn btn-sm btn-primary editSalesQuotationBtn">
                                     <i class="fas fa-pen"></i>
