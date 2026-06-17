@@ -1510,39 +1510,46 @@ namespace YamyProject.Controllers
                           `orientation` int DEFAULT '1'
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-                        CREATE TABLE IF NOT EXISTS `tbl_purchase` (
-                          `id` int NOT NULL AUTO_INCREMENT,
-                          `date` date NOT NULL,
-                          `vendor_id` int NOT NULL DEFAULT '0',
-                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
-                          `warehouse_id` int NOT NULL DEFAULT '0',
-                          `po_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
-                          `bill_to` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
-                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
-                          `sales_man` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
-                          `ship_date` date DEFAULT NULL,
-                          `ship_via` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
-                            `description` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
-                          `ship_to` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
-                          `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
-                          `account_cash_id` int NOT NULL DEFAULT '0',
-                          `payment_terms` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
-                          `payment_date` date NOT NULL,
-                          `total` decimal(20,4) NOT NULL DEFAULT '0.000',
-                          `vat` decimal(20,4) NOT NULL DEFAULT '0.000',
-                          `net` decimal(20,4) NOT NULL DEFAULT '0.000',
-                          `pay` decimal(20,4) NOT NULL DEFAULT '0.000',
-                          `change` decimal(20,4) NOT NULL DEFAULT '0.000',
-                          `created_by` int NOT NULL DEFAULT '0',
-                          `created_date` date NOT NULL,
-                          `modified_by` int DEFAULT NULL,
-                          `modified_date` date DEFAULT NULL,
-                          `state` int NOT NULL DEFAULT '0',
-                          `purchase_type` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
-                          `fixed_asset_category_id` int NOT NULL DEFAULT '0',
-                          `project_id` INT NOT NULL DEFAULT 0,
-                          PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+                         CREATE TABLE `tbl_purchase` (
+	                        `id` INT(10) NOT NULL AUTO_INCREMENT,
+	                        `date` DATE NOT NULL,
+	                        `vendor_id` INT(10) NOT NULL DEFAULT '0',
+	                        `invoice_id` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
+	                        `warehouse_id` INT(10) NOT NULL DEFAULT '0',
+	                        `po_num` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
+	                        `bill_to` VARCHAR(200) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
+	                        `city` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
+	                        `sales_man` VARCHAR(200) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
+	                        `ship_date` DATE NULL DEFAULT NULL,
+	                        `ship_via` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
+	                        `description` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
+	                        `ship_to` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
+	                        `payment_method` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
+	                        `account_cash_id` INT(10) NOT NULL DEFAULT '0',
+	                        `payment_terms` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
+	                        `payment_date` DATE NOT NULL,
+	                        `total` DECIMAL(20,4) NOT NULL DEFAULT '0.0000',
+	                        `vat` DECIMAL(20,4) NOT NULL DEFAULT '0.0000',
+	                        `net` DECIMAL(20,4) NOT NULL DEFAULT '0.0000',
+	                        `pay` DECIMAL(20,4) NOT NULL DEFAULT '0.0000',
+	                        `change` DECIMAL(20,4) NOT NULL DEFAULT '0.0000',
+	                        `created_by` INT(10) NOT NULL DEFAULT '0',
+	                        `created_date` DATE NOT NULL,
+	                        `modified_by` INT(10) NULL DEFAULT NULL,
+	                        `modified_date` DATE NULL DEFAULT NULL,
+	                        `state` INT(10) NOT NULL DEFAULT '0',
+	                        `purchase_type` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
+	                        `fixed_asset_category_id` INT(10) NOT NULL DEFAULT '0',
+	                        `project_id` INT(10) NOT NULL DEFAULT '0',
+	                        `retention_percentage` DECIMAL(18,2) NULL DEFAULT '0.00',
+	                        `retention_amount` DECIMAL(18,2) NULL DEFAULT '0.00',
+	                        PRIMARY KEY (`id`) USING BTREE
+                                )
+                                COLLATE='utf8mb4_0900_ai_ci'
+                                ENGINE=InnoDB
+                                AUTO_INCREMENT=646
+                                ;
+
 
                         CREATE TABLE IF NOT EXISTS `tbl_purchase_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
