@@ -7620,7 +7620,7 @@ WHERE payment_id = @paymentId";
                             id = reader["id"],
                             code = reader["code"],
                             name = reader["name"],
-                            balance = reader["balance"],
+                            balance = reader["balance"] == DBNull.Value? 0 : Convert.ToDecimal(reader["balance"]),
                             date = reader["date"]
                         });
                     }
@@ -7632,7 +7632,7 @@ WHERE payment_id = @paymentId";
                 {
                     int vId = Convert.ToInt32(vendor.id);
                     decimal balance = Convert.ToDecimal(vendor.balance ?? 0);
-                    DateTime obDate = vendor.date != null ? Convert.ToDateTime(vendor.date) : DateTime.Now;
+                    DateTime obDate = vendor.date == DBNull.Value? DateTime.Now : Convert.ToDateTime(vendor.date);
 
                     // Get total paid from opening balance
                     decimal totalPaid = 0;
