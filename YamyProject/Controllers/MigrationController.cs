@@ -26,7 +26,7 @@ namespace YamyProject.Controllers
         private readonly int _fallbackItemId = 1;     
         private readonly Dictionary<string, int> _itemCache = new();
 
-        private readonly string _paymentType = "Vendor";
+       // private readonly string _paymentType = "Vendor";
         private readonly string _method = "Cheque";
         private readonly bool _isSubContractor = false;
         // resolved defaults (fallbacks)
@@ -36,12 +36,17 @@ namespace YamyProject.Controllers
         private readonly Dictionary<string, int> _accountByName = new();
         private readonly Dictionary<string, int> _accountByBank = new();
 
+        private readonly string _paymentType = "Customer";
+        private int _arAccountId;        // default Customer A/R (coa_config "Customer")
+        private int _cashAccountId;      // fallback bank/cash account if a name doesn't resolve
+
+
         #region SalesInvoice
 
         private static readonly string[] _dateFormats =
             { "yyyy-MM-dd", "dd/MM/yyyy", "d/M/yyyy", "MM/dd/yyyy" };
 
-        private int _arAccountId, _salesAccountId, _vatAccountId, _revenueItemId;
+        private int  _salesAccountId, _vatAccountId, _revenueItemId;
         private long _invoiceSeq;
         [HttpPost]
         public async Task<IActionResult> ImportSalesInvoices(IFormFile file)
@@ -1626,6 +1631,491 @@ namespace YamyProject.Controllers
                 public string Details { get; set; } = "";
                 public decimal Amount { get; set; }
             }
+
+        #endregion
+
+        #region Receipt Voucher
+
+        [HttpPost]
+        public async Task<IActionResult> ImportReceipts(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { status = false, message = "Please select a file." });
+
+            var dir = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
+            Directory.CreateDirectory(dir);
+            var path = Path.Combine(dir, file.FileName);
+            using (var s = new FileStream(path, FileMode.Create)) await file.CopyToAsync(s);
+
+            var result = await ImportReceiptsAsync(path);
+            return Ok(new { status = true, message = "Import completed", result });
+        }
+
+        public async Task<object> ImportReceiptsAsync(string filePath)
+        {
+            var rows = RseadRows(filePath);
+
+            // group by SN -> one receipt voucher per serial
+            var groups = rows
+                .Select((r, i) => (row: r, idx: i))
+                .GroupBy(x => x.row.Sn.Trim())
+                .ToList();
+
+            Console.WriteLine($"Total rows: {rows.Count}, receipts (by SN): {groups.Count}");
+
+            int success = 0, skipped = 0, failed = 0, newCustomers = 0;
+            var errors = new List<string>();
+            var newCustomersList = new List<string>();
+
+            var bootBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase"),
+                CharacterSet = "utf8mb4"
+            };
+            using (var bconn = new MySqlConnection(bootBuilder.ConnectionString))
+            {
+                await bconn.OpenAsync();
+                await LoadsDefaultsAsync(bconn);
+            }
+
+            foreach (var grp in groups)
+            {
+                var lines = grp.OrderBy(x => x.idx).Select(x => x.row).ToList();
+                var headRow = lines[0];
+                string sn = headRow.Sn.Trim();
+
+                try
+                {
+                    var connBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                    {
+                        Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase"),
+                        CharacterSet = "utf8mb4"
+                    };
+                    using var conn = new MySqlConnection(connBuilder.ConnectionString);
+                    await conn.OpenAsync();
+                    using var tx = await conn.BeginTransactionAsync();
+
+                    try
+                    {
+                        if (lines.Select(l => l.Customer.Trim()).Distinct().Count() > 1)
+                            Console.WriteLine($"[WARN] SN={sn} mixed customers; using '{headRow.Customer}'.");
+
+                        int customerId = await ResolvesCustomerIdAsync(conn, tx, headRow.Customer);
+                        if (customerId <= 0)
+                        {
+                            // MODIFIED: Auto-insert missing customer instead of skipping
+                            customerId = await InsertNewCustomerAsync(conn, tx, headRow.Customer);
+                            if (customerId <= 0)
+                            {
+                                skipped++;
+                                errors.Add($"SN {sn}: failed to create customer '{headRow.Customer}'");
+                                await tx.RollbackAsync();
+                                continue;
+                            }
+                            newCustomers++;
+                            newCustomersList.Add($"'{headRow.Customer}' (ID={customerId})");
+                            Console.WriteLine($"[NEW CUST] Created customer: '{headRow.Customer}' with ID={customerId}");
+                        }
+
+                        // money received into bank/cash account (column G); fallback default cash
+                        int debitAccountId = await ResolvesAccountByNameAsync(conn, tx, headRow.Account);
+                        if (debitAccountId <= 0) debitAccountId = _cashAccountId;
+                        int creditAccountId = _arAccountId;     // Customer A/R
+
+                        if (debitAccountId <= 0 || creditAccountId <= 0)
+                        {
+                            failed++;
+                            errors.Add($"SN {sn}: account not resolved (acct='{headRow.Account}')");
+                            await tx.RollbackAsync();
+                            continue;
+                        }
+
+                        decimal amount = lines.Sum(l => l.Amount);
+                        string method = NormalizeMethod(headRow.Type);   // Cheque / Cash
+                        string code = int.TryParse(sn, out var n) ? $"RV-{n:D4}" : $"RV-{sn}";
+
+                        // FIXED: Combine description + ALL cheque numbers (including "0")
+                        var chqNos = lines
+                            .Where(l => !string.IsNullOrWhiteSpace(l.ChequeNo))
+                            .Select(l => SanitizeChequeNo(l.ChequeNo.Trim()))
+                            .Distinct()
+                            .ToList();
+
+                        string desc = headRow.Description ?? "";
+                        if (chqNos.Count > 0)
+                        {
+                            string chqNosStr = string.Join(", ", chqNos);
+                            desc = $"{desc} {chqNosStr}".Trim();
+                        }
+
+                        // 1) tbl_receipt_voucher
+                        int rvId = await InsertVoucherAsync(conn, tx, headRow, code, method, amount,
+                                        debitAccountId, creditAccountId, desc);
+
+                        // 2) tbl_check_details — one per cheque line
+                        if (method == "Cheque")
+                            foreach (var l in lines)
+                                await InsertCheckDetailsAsync(conn, tx, l, rvId);
+
+                        // 3) journals: Debit Bank/Cash, Credit Customer A/R (hum_id = customer)
+                        await AddTransactionssEntryAsync(conn, tx, headRow.Date, debitAccountId.ToString(),
+                            amount, 0, rvId.ToString(), "0",
+                            "RECEIPT", "Customer Receipt", $"Receipt Voucher NO. {code}", _userId, DateTime.Now.Date, code);
+                        await AddTransactionssEntryAsync(conn, tx, headRow.Date, creditAccountId.ToString(),
+                            0, amount, rvId.ToString(), customerId.ToString(),
+                            "RECEIPT", "Customer Receipt", $"Receipt Voucher NO. {code}", _userId, DateTime.Now.Date, code);
+
+                        // 4) cost-center debit/credit (0 center)
+                        await InsertCostsCenterAsync(conn, tx, headRow.Date, amount, 0, rvId.ToString(), "Receipt", "Receipt Debit Entry", "0");
+                        await InsertCostsCenterAsync(conn, tx, headRow.Date, 0, amount, rvId.ToString(), "Receipt", "Receipt Credit Entry", "0");
+
+                        // 5) INSERT receipt voucher details
+                        foreach (var line in lines)
+                        {
+                            await InsertReceiptVoucherDetailsAsync(conn, tx, headRow.Date, rvId, customerId, line, desc);
+                        }
+
+                        await tx.CommitAsync();
+                        success++;
+                        Console.WriteLine($"[OK]   SN={sn} code={code} cust={customerId} cheques={lines.Count} amt={amount} rvId={rvId}");
+                    }
+                    catch (Exception ex)
+                    {
+                        await tx.RollbackAsync();
+                        failed++;
+                        errors.Add($"SN {sn}: {ex.Message}");
+                        Console.WriteLine($"[FAIL] SN={sn} => {ex.Message}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    errors.Add($"SN {sn}: (connection) {ex.Message}");
+                }
+            }
+
+            Console.WriteLine("===========================================");
+            Console.WriteLine($"Done.  Success={success}  Skipped={skipped}  Failed={failed}  New Customers={newCustomers}");
+            return new
+            {
+                totalRows = rows.Count,
+                receipts = groups.Count,
+                success,
+                skipped,
+                failed,
+                newCustomers,
+                errors,
+                newCustomersList,
+                skippedList = errors.Where(e => e.Contains("customer not found") || e.Contains("failed to create customer")).ToList()
+            };
+        }
+
+     
+        private async Task<int> InsertNewCustomerAsync(MySqlConnection conn, MySqlTransaction tx, string customerName)
+        {
+            try
+            {
+                var sql = @"
+        INSERT INTO tbl_customer (name, email, created_date, created_by, state)
+        VALUES (@name, '', @created_date, @created_by, 1);
+        SELECT LAST_INSERT_ID();";
+
+                using var cmd = new MySqlCommand(sql, conn, tx);
+                cmd.Parameters.AddWithValue("@name", Truncc(customerName ?? "", 200));
+                cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
+                cmd.Parameters.AddWithValue("@created_by", _userId);
+
+                var result = await cmd.ExecuteScalarAsync();
+                return (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Failed to create customer '{customerName}': {ex.Message}");
+                return 0;
+            }
+        }
+
+        private static string SanitizeChequeNo(string chequeNo)
+        {
+            if (string.IsNullOrWhiteSpace(chequeNo))
+                return "";
+
+            // Extract only digits
+            string digitsOnly = new string(chequeNo.Where(char.IsDigit).ToArray());
+
+            // If no digits found (contains text/Arabic), return "0"
+            if (string.IsNullOrWhiteSpace(digitsOnly))
+                return "0";
+
+            // If has digits and also has text, return "0"
+            bool hasNonDigits = chequeNo.Any(c => !char.IsDigit(c) && !char.IsWhiteSpace(c));
+            if (hasNonDigits)
+                return "0";
+
+            // Pure digits - return as-is
+            return digitsOnly;
+        }
+
+        // ============== INSERT: Receipt Voucher Details ==============
+        private async Task InsertReceiptVoucherDetailsAsync(MySqlConnection conn, MySqlTransaction tx,
+            DateTime date, int paymentId, int customerId, ReceiptRow row, string description)
+        {
+            var sql = @"
+    INSERT INTO tbl_receipt_voucher_details
+    (date, payment_id, hum_id, inv_id, inv_code, total, payment, description)
+    VALUES (@date, @payment_id, @hum_id, @inv_id, @inv_code, @total, @payment, @description)";
+
+            using var cmd = new MySqlCommand(sql, conn, tx);
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@payment_id", paymentId);
+            cmd.Parameters.AddWithValue("@hum_id", customerId);
+            cmd.Parameters.AddWithValue("@inv_id", 0);
+            cmd.Parameters.AddWithValue("@inv_code", "");
+            cmd.Parameters.AddWithValue("@total", row.Amount);
+            cmd.Parameters.AddWithValue("@payment", row.Amount);
+            cmd.Parameters.AddWithValue("@description", Truncc(description, 500));
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        // ---------------- defaults / lookups ----------------
+        private async Task LoadsDefaultsAsync(MySqlConnection conn)
+        {
+            var acc = new Dictionary<string, int>();
+            using (var cmd = new MySqlCommand("SELECT category, account_id FROM tbl_coa_config", conn))
+            using (var r = await cmd.ExecuteReaderAsync())
+                while (await r.ReadAsync())
+                    acc[r.GetString("category")] = r.GetInt32("account_id");
+
+            _arAccountId = acc.TryGetValue("Customer", out var c) ? c : 0;
+            _cashAccountId = acc.TryGetValue("Cash", out var ca) ? ca : 0;
+
+            if (_arAccountId <= 0)
+                throw new Exception("tbl_coa_config missing 'Customer' (A/R) account.");
+        }
+
+        private async Task<int> ResolvesCustomerIdAsync(MySqlConnection conn, MySqlTransaction tx, string name)
+        {
+            using var cmd = new MySqlCommand("SELECT id FROM tbl_customer WHERE TRIM(name)=TRIM(@n) LIMIT 1", conn, tx);
+            cmd.Parameters.AddWithValue("@n", name ?? "");
+            var res = await cmd.ExecuteScalarAsync();
+            return (res != null && res != DBNull.Value) ? Convert.ToInt32(res) : 0;
+        }
+
+        private async Task<int> ResolvesAccountByNameAsync(MySqlConnection conn, MySqlTransaction tx, string name)
+        {
+            var key = (name ?? "").Trim();
+            if (key.Length == 0) return 0;
+            if (_accountByName.TryGetValue(key, out var c)) return c;
+            using var cmd = new MySqlCommand(
+                "SELECT id FROM tbl_coa_level_4 WHERE TRIM(name)=TRIM(@n) OR TRIM(name) LIKE CONCAT('%',TRIM(@n),'%') LIMIT 1", conn, tx);
+            cmd.Parameters.AddWithValue("@n", key);
+            var res = await cmd.ExecuteScalarAsync();
+            int id = (res != null && res != DBNull.Value) ? Convert.ToInt32(res) : 0;
+            _accountByName[key] = id;
+            return id;
+        }
+
+        private static string NormalizeMethod(string t)
+        {
+            var s = (t ?? "").Trim();
+            if (s.Equals("Cheque", StringComparison.OrdinalIgnoreCase) ||
+                s.Equals("Check", StringComparison.OrdinalIgnoreCase)) return "Cheque";
+            if (s.Equals("Transfer", StringComparison.OrdinalIgnoreCase)) return "Transfer";
+            return "Cash";
+        }
+
+        // ---------------- inserts ----------------
+        private async Task<int> InsertVoucherAsync(MySqlConnection conn, MySqlTransaction tx,
+            ReceiptRow row, string code, string method, decimal amount,
+            int debitAccountId, int creditAccountId, string description)
+        {
+            var sql = @"
+    INSERT INTO tbl_receipt_voucher
+    (date, code, type, method, amount, debit_account_id, debit_cost_center_id,
+     credit_account_id, credit_cost_center_id, bank_id, bank_account_id, book_no,
+     check_name, check_no, check_date, trans_date, trans_name, trans_ref,
+     created_by, created_date, state)
+    VALUES
+    (@date, @code, @type, @method, @amount, @debit_account_id, 0,
+     @credit_account_id, 0, 0, 0, 0,
+     @check_name, @check_no, @check_date, NULL, '', '',
+     @created_by, @created_date, 0);
+    SELECT LAST_INSERT_ID();";
+
+            using var cmd = new MySqlCommand(sql, conn, tx);
+            cmd.Parameters.AddWithValue("@date", row.Date);
+            cmd.Parameters.AddWithValue("@code", code);
+            cmd.Parameters.AddWithValue("@type", _paymentType);
+            cmd.Parameters.AddWithValue("@method", method);
+            cmd.Parameters.AddWithValue("@amount", amount);
+            cmd.Parameters.AddWithValue("@debit_account_id", debitAccountId);
+            cmd.Parameters.AddWithValue("@credit_account_id", creditAccountId);
+            cmd.Parameters.AddWithValue("@check_name", Truncc(row.Customer, 100));
+
+            // FIXED: Store cheque as-is if valid, or "0" if Arabic
+            string sanitizedChequeNo = SanitizeChequeNo(row.ChequeNo ?? "");
+            if (method == "Cheque" && !string.IsNullOrEmpty(sanitizedChequeNo))
+            {
+                cmd.Parameters.AddWithValue("@check_no", (object)sanitizedChequeNo);
+            }
+            else
+            {
+                cmd.Parameters.AddWithValue("@check_no", DBNull.Value);
+            }
+
+            cmd.Parameters.AddWithValue("@check_date", method == "Cheque" && row.ChequeDate.HasValue ? (object)row.ChequeDate.Value : DBNull.Value);
+            cmd.Parameters.AddWithValue("@created_by", _userId);
+            cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
+
+            return Convert.ToInt32(await cmd.ExecuteScalarAsync());
+        }
+
+        private async Task InsertCheckDetailsAsync(MySqlConnection conn, MySqlTransaction tx, ReceiptRow row, int rvId)
+        {
+            var sql = @"
+    INSERT INTO tbl_check_details
+    (date, check_id, check_no, check_date, check_type, pvc_no, check_name, amount, state)
+    VALUES (@date, 0, @check_no, @check_date, 'Receipt', @pvc_no, @check_name, @amount, 'New');";
+
+            using var cmd = new MySqlCommand(sql, conn, tx);
+            cmd.Parameters.AddWithValue("@date", row.Date);
+
+            // FIXED: Store sanitized cheque number (or "0" if Arabic)
+            string sanitizedChequeNo = SanitizeChequeNo(row.ChequeNo ?? "");
+            cmd.Parameters.AddWithValue("@check_no", sanitizedChequeNo);
+
+            cmd.Parameters.AddWithValue("@check_date", (object?)row.ChequeDate ?? row.Date);
+            cmd.Parameters.AddWithValue("@pvc_no", rvId);
+            cmd.Parameters.AddWithValue("@check_name", Truncc(row.Customer, 100));
+            cmd.Parameters.AddWithValue("@amount", row.Amount);
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        private async Task AddTransactionssEntryAsync(MySqlConnection conn, MySqlTransaction tx,
+            DateTime date, string accountId, decimal debit, decimal credit, string transactionId,
+            string humId, string tType, string type, string description, int createdBy,
+            DateTime createdDate, string voucherNo)
+        {
+            var sql = @"
+    INSERT INTO tbl_transaction
+    (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no)
+    VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @type, @description, @createdBy, @createdDate, 0, @voucher_no);";
+
+            using var cmd = new MySqlCommand(sql, conn, tx);
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@accountId", accountId);
+            cmd.Parameters.AddWithValue("@debit", debit);
+            cmd.Parameters.AddWithValue("@credit", credit);
+            cmd.Parameters.AddWithValue("@transactionId", transactionId);
+            cmd.Parameters.AddWithValue("@hum_id", humId);
+            cmd.Parameters.AddWithValue("@tType", tType);
+            cmd.Parameters.AddWithValue("@type", type);
+            cmd.Parameters.AddWithValue("@description", description);
+            cmd.Parameters.AddWithValue("@createdBy", createdBy);
+            cmd.Parameters.AddWithValue("@createdDate", createdDate);
+            cmd.Parameters.AddWithValue("@voucher_no", voucherNo);
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        private async Task InsertCostsCenterAsync(MySqlConnection conn, MySqlTransaction tx,
+            DateTime date, decimal debit, decimal credit, string refId, string type, string description, string costCenterId)
+        {
+            var sql = @"
+    INSERT INTO tbl_cost_center_transaction
+    (type, date, ref_id, debit, credit, description, cost_center_id)
+    VALUES (@type, @date, @ref, @debit, @credit, @description, @cc);";
+
+            using var cmd = new MySqlCommand(sql, conn, tx);
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@type", type);
+            cmd.Parameters.AddWithValue("@ref", refId);
+            cmd.Parameters.AddWithValue("@debit", debit);
+            cmd.Parameters.AddWithValue("@credit", credit);
+            cmd.Parameters.AddWithValue("@description", description);
+            cmd.Parameters.AddWithValue("@cc", costCenterId);
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        // ---------------- reader ----------------
+        private List<ReceiptRow> RseadRows(string filePath)
+        {
+            var rows = new List<ReceiptRow>();
+            using var wb = new XLWorkbook(filePath);
+            var ws = wb.Worksheets.First();
+
+            foreach (var r in ws.RowsUsed())
+            {
+                string dateCell = r.Cell("B").GetString().Trim();
+                string sn = r.Cell("C").GetString().Trim();
+
+                if (dateCell.Equals("Date", StringComparison.OrdinalIgnoreCase)) continue;
+                if (sn.Equals("SN", StringComparison.OrdinalIgnoreCase)) continue;
+                if (string.IsNullOrWhiteSpace(dateCell) && string.IsNullOrWhiteSpace(sn)) continue;
+                if (string.IsNullOrWhiteSpace(sn)) continue;
+
+                DateTime date;
+                var bCell = r.Cell("B");
+                if (bCell.DataType == XLDataType.DateTime) date = bCell.GetDateTime();
+                else if (!TryParseDatee(dateCell, out date)) { Console.WriteLine($"Row {r.RowNumber()} bad date: {dateCell}"); continue; }
+
+                DateTime? chqDate = null;
+                var iCell = r.Cell("I");
+                if (iCell.DataType == XLDataType.DateTime) chqDate = iCell.GetDateTime();
+                else if (TryParseDatee(iCell.GetString().Trim(), out var cd)) chqDate = cd;
+
+                rows.Add(new ReceiptRow
+                {
+                    Date = date,
+                    Sn = sn,
+                    Customer = r.Cell("D").GetString().Trim(),
+                    Description = r.Cell("F").GetString().Trim(),
+                    Account = r.Cell("G").GetString().Trim(),
+                    ChequeNo = r.Cell("H").GetString().Trim(),
+                    ChequeDate = chqDate,
+                    Type = r.Cell("J").GetString().Trim(),
+                    Amount = ParseNumm(r.Cell("K")),
+                });
+            }
+            Console.WriteLine($"ReadRows: parsed {rows.Count}");
+            return rows;
+        }
+
+        private static string Truncc(string s, int max) =>
+            string.IsNullOrEmpty(s) ? "" : (s.Length > max ? s.Substring(0, max) : s);
+
+        private static decimal ParseNumm(IXLCell cell)
+        {
+            if (cell.DataType == XLDataType.Number) return (decimal)cell.GetDouble();
+            var s = cell.GetString().Replace(",", "").Trim();
+            if (s.Length == 0 || s == "-") return 0m;
+            return decimal.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? d : 0m;
+        }
+
+        private static bool TryParseDatee(string s, out DateTime date)
+        {
+            if (DateTime.TryParseExact(s, _dateFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
+                return true;
+            if (double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var oa))
+            { date = DateTime.FromOADate(oa); return true; }
+            return DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
+        }
+
+        private class ReceiptRow
+        {
+            public DateTime Date { get; set; }
+            public string Sn { get; set; } = "";
+            public string Customer { get; set; } = "";
+            public string Description { get; set; } = "";
+            public string Account { get; set; } = "";
+            public string ChequeNo { get; set; } = "";
+            public DateTime? ChequeDate { get; set; }
+            public string Type { get; set; } = "";
+            public decimal Amount { get; set; }
+        }
 
         #endregion
     }
