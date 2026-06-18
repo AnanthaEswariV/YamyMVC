@@ -23,11 +23,18 @@ namespace YamyProject.Controllers
         private long _vendorSeq;
         private readonly int _serviceItemId = 1;          
         private readonly string _purchaseType = "Service";
-
-        // CONFIG
         private readonly int _fallbackItemId = 1;     
+        private readonly Dictionary<string, int> _itemCache = new();
 
-        private readonly Dictionary<string, int> _itemCache = new();  
+        private readonly string _paymentType = "Vendor";
+        private readonly string _method = "Cheque";
+        private readonly bool _isSubContractor = false;
+        // resolved defaults (fallbacks)
+        private int _apAccountId;          // default Accounts Payable (coa_config "Vendor")
+        private int _pdcPayableAccountId;  // default credit side (coa_config "PDC Payable")
+        private long _pvSeq;               // running PV number
+        private readonly Dictionary<string, int> _accountByName = new();
+        private readonly Dictionary<string, int> _accountByBank = new();
 
         #region SalesInvoice
 
@@ -1255,7 +1262,376 @@ namespace YamyProject.Controllers
         }
 
         #endregion
+
+        #region Payment Voucher
+
+            [HttpPost]
+            public async Task<IActionResult> ImportPdcPayments(IFormFile file)
+            {
+                if (file == null || file.Length == 0)
+                    return BadRequest(new { status = false, message = "Please select a file." });
+
+                var dir = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
+                Directory.CreateDirectory(dir);
+                var path = Path.Combine(dir, file.FileName);
+                using (var s = new FileStream(path, FileMode.Create)) await file.CopyToAsync(s);
+
+                var result = await ImportPdcPaymentsAsync(path);
+                return Ok(new { status = true, message = "Import completed", result });
+            }
+
+            public async Task<object> ImportPdcPaymentsAsync(string filePath)
+            {
+                var rows = ReasdRows(filePath);
+                Console.WriteLine($"Total PDC rows: {rows.Count}");
+
+                int success = 0, failed = 0;
+                var errors = new List<string>();
+
+                var bootBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase"),
+                    CharacterSet = "utf8mb4"
+                };
+                using (var bconn = new MySqlConnection(bootBuilder.ConnectionString))
+                {
+                    await bconn.OpenAsync();
+                    await LoadDefaultssAsync(bconn);
+                    
+                }
+
+                foreach (var row in rows)
+                {
+                    string sn = row.Sn;
+                    try
+                    {
+                        var connBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                        {
+                            Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase"),
+                            CharacterSet = "utf8mb4"
+                        };
+                        using var conn = new MySqlConnection(connBuilder.ConnectionString);
+                        await conn.OpenAsync();
+                        using var tx = await conn.BeginTransactionAsync();
+
+                        try
+                        {
+                            int vendorId = await ResolveVendorsIdAsync(conn, tx, row.Vendor);   // hum_id (0 if not found)
+
+                            // Debit account from "Account Name"; fallback default A/P
+                            int debitAccountId = await ResolveAccountByNameAsync(conn, tx, row.AccountName);
+                            if (debitAccountId <= 0) debitAccountId = _apAccountId;
+
+                            // Credit account from Bank name; fallback default PDC payable
+                            int creditAccountId = await ResolveAccountByBankAsync(conn, tx, row.Bank);
+                            if (creditAccountId <= 0) creditAccountId = _pdcPayableAccountId;
+
+                            if (debitAccountId <= 0 || creditAccountId <= 0)
+                            {
+                                failed++;
+                                errors.Add($"SN {sn}: debit/credit account not resolved (acct='{row.AccountName}', bank='{row.Bank}')");
+                                await tx.RollbackAsync();
+                                continue;
+                            }
+
+                        string code = int.TryParse(row.Sn.Trim(), out var snNum)? $"PV-{snNum:D4}" : $"PV-{row.Sn.Trim()}";
+
+                        // 1) tbl_payment_voucher
+                        int pvId = await InsertVoucherAsync(conn, tx, row, code, debitAccountId, creditAccountId);
+
+                            // 2) tbl_check_details
+                            await InsertCheckDetailsAsync(conn, tx, row, pvId, code);
+                            await InsertVoucherDetailAsync(conn, tx, row, pvId, vendorId);
+                        // 3) journals: Debit A/P, Credit PDC/Bank
+                        string tType = _isSubContractor ? "Subcontractor Payment" : "Vendor Payment";
+                            await AddTransactionsEntryAsync(conn, tx, row.Date, debitAccountId.ToString(),
+                                row.Amount, 0, pvId.ToString(), vendorId > 0 ? vendorId.ToString() : "0",
+                                tType, tType, $"Payment Voucher NO. {code}", _userId, DateTime.Now, code);
+                            await AddTransactionsEntryAsync(conn, tx, row.Date, creditAccountId.ToString(),
+                                0, row.Amount, pvId.ToString(), "0",
+                                tType, tType, $"Payment Voucher NO. {code}", _userId, DateTime.Now, code);
+
+                            // 4) cost-center debit/credit (0 center)
+                            await InsertCostCenterAsync(conn, tx, row.Date, row.Amount, 0, pvId.ToString(), "Payment", "Payment Debit Entry", "0");
+                            await InsertCostCenterAsync(conn, tx, row.Date, 0, row.Amount, pvId.ToString(), "Payment", "Payment Credit Entry", "0");
+
+                            await tx.CommitAsync();
+                            success++;
+                            Console.WriteLine($"[OK]   SN={sn} code={code} vendor={vendorId} amt={row.Amount} pvId={pvId}");
+                        }
+                        catch (Exception ex)
+                        {
+                            await tx.RollbackAsync();
+                            failed++;
+                            errors.Add($"SN {sn}: {ex.Message}");
+                            Console.WriteLine($"[FAIL] SN={sn} => {ex.Message}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        failed++;
+                        errors.Add($"SN {sn}: (connection) {ex.Message}");
+                    }
+                }
+
+                Console.WriteLine("===========================================");
+                Console.WriteLine($"Done.  Success={success}  Failed={failed}");
+                return new { totalRows = rows.Count, success, failed, errors };
+            }
+        private async Task InsertVoucherDetailAsync(MySqlConnection conn, MySqlTransaction tx,
+    PdcRow row, int pvId, int vendorId)
+        {
+            var sql = @"
+        INSERT INTO tbl_payment_voucher_details
+        (date, payment_id, hum_id, inv_id, inv_code, total, payment, description, voucher_type)
+        VALUES (@date, @payment_id, @hum_id, 0, @inv_code, @total, @payment, @description, @voucher_type);";
+
+            using var cmd = new MySqlCommand(sql, conn, tx);
+            cmd.Parameters.AddWithValue("@date", row.Date);
+            cmd.Parameters.AddWithValue("@payment_id", pvId);
+            cmd.Parameters.AddWithValue("@hum_id", vendorId);
+            cmd.Parameters.AddWithValue("@inv_code", row.Sn ?? "");            // source serial for traceability
+            cmd.Parameters.AddWithValue("@total", row.Amount);
+            cmd.Parameters.AddWithValue("@payment", row.Amount);
+            cmd.Parameters.AddWithValue("@description", Trunc(row.Details, 250));
+            cmd.Parameters.AddWithValue("@voucher_type", _isSubContractor ? "Subcontractor Payment" : "Vendor Payment");
+            await cmd.ExecuteNonQueryAsync();
+        }
+        // ---------------- defaults / lookups ----------------
+        private async Task LoadDefaultssAsync(MySqlConnection conn)
+            {
+                var acc = new Dictionary<string, int>();
+                using (var cmd = new MySqlCommand("SELECT category, account_id FROM tbl_coa_config", conn))
+                using (var r = await cmd.ExecuteReaderAsync())
+                    while (await r.ReadAsync())
+                        acc[r.GetString("category")] = r.GetInt32("account_id");
+
+                _apAccountId = acc.TryGetValue("Vendor", out var v) ? v : 0;          // A/P
+                _pdcPayableAccountId = acc.TryGetValue("PDC Payable", out var pdc) ? pdc : 0;  // <-- add this category, or set a fixed id below
+                                                                                               // if you don't have a "PDC Payable" config row, hard-set it:  _pdcPayableAccountId = <accountId>;
+
+                if (_apAccountId <= 0)
+                    throw new Exception("tbl_coa_config missing 'Vendor' (A/P) account.");
+            }
+
+            private async Task<long> GetMaxPvSeqAsync(MySqlConnection conn)
+            {
+                using var cmd = new MySqlCommand(
+                    "SELECT IFNULL(MAX(CAST(SUBSTRING(code, 4) AS UNSIGNED)),0) FROM tbl_payment_voucher WHERE code LIKE 'PV-%'", conn);
+                var res = await cmd.ExecuteScalarAsync();
+                return (res != null && res != DBNull.Value) ? Convert.ToInt64(res) : 0;
+            }
+
+            private async Task<int> ResolveVendorsIdAsync(MySqlConnection conn, MySqlTransaction tx, string name)
+            {
+                using var cmd = new MySqlCommand("SELECT id FROM tbl_vendor WHERE TRIM(name)=TRIM(@n) LIMIT 1", conn, tx);
+                cmd.Parameters.AddWithValue("@n", name ?? "");
+                var res = await cmd.ExecuteScalarAsync();
+                return (res != null && res != DBNull.Value) ? Convert.ToInt32(res) : 0;
+            }
+
+            // resolve a GL account PK from its NAME (cached)  -- TODO confirm accounts table/cols
+            private async Task<int> ResolveAccountByNameAsync(MySqlConnection conn, MySqlTransaction tx, string name)
+            {
+                var key = (name ?? "").Trim();
+                if (key.Length == 0) return 0;
+                if (_accountByName.TryGetValue(key, out var c)) return c;
+                using var cmd = new MySqlCommand("SELECT id FROM tbl_coa_level_4 WHERE TRIM(name)=TRIM(@n) LIMIT 1", conn, tx);
+                cmd.Parameters.AddWithValue("@n", key);
+                var res = await cmd.ExecuteScalarAsync();
+                int id = (res != null && res != DBNull.Value) ? Convert.ToInt32(res) : 0;
+                _accountByName[key] = id;
+                return id;
+            }
+
+            private async Task<int> ResolveAccountByBankAsync(MySqlConnection conn, MySqlTransaction tx, string bank)
+            {
+                var key = (bank ?? "").Trim();
+                if (key.Length == 0) return 0;
+                if (_accountByBank.TryGetValue(key, out var c)) return c;
+                // try to match a GL account whose name contains the bank name; else 0 -> fallback PDC
+                using var cmd = new MySqlCommand(
+                    "SELECT id FROM tbl_coa_level_4 WHERE TRIM(name)=TRIM(@n) OR TRIM(name) LIKE CONCAT('%',TRIM(@n),'%') LIMIT 1", conn, tx);
+                cmd.Parameters.AddWithValue("@n", key);
+                var res = await cmd.ExecuteScalarAsync();
+                int id = (res != null && res != DBNull.Value) ? Convert.ToInt32(res) : 0;
+                _accountByBank[key] = id;
+                return id;
+            }
+
+            // ---------------- inserts ----------------
+            private async Task<int> InsertVoucherAsync(MySqlConnection conn, MySqlTransaction tx,
+                PdcRow row, string code, int debitAccountId, int creditAccountId)
+            {
+                var sql = @"
+                INSERT INTO tbl_payment_voucher
+                (date, code, type, method, amount, debit_account_id, debit_cost_center_id, description,
+                 credit_account_id, credit_cost_center_id, bank_id, bank_account_id, book_no, check_name,
+                 check_no, check_date, trans_date, trans_name, trans_ref, created_by, created_date, state)
+                VALUES
+                (@date, @code, @type, @method, @amount, @debit_account_id, 0, @description,
+                 @credit_account_id, 0, 0, 0, 0, @check_name,
+                 @check_no, @check_date, NULL, '', '', @created_by, @created_date, 0);
+                SELECT LAST_INSERT_ID();";
+
+                using var cmd = new MySqlCommand(sql, conn, tx);
+                cmd.Parameters.AddWithValue("@date", row.Date);
+                cmd.Parameters.AddWithValue("@code", code);
+                cmd.Parameters.AddWithValue("@type", _paymentType);
+                cmd.Parameters.AddWithValue("@method", _method);
+                cmd.Parameters.AddWithValue("@amount", row.Amount);
+                cmd.Parameters.AddWithValue("@debit_account_id", debitAccountId);
+                cmd.Parameters.AddWithValue("@description", Trunc(row.Details, 250));
+                cmd.Parameters.AddWithValue("@credit_account_id", creditAccountId);
+                cmd.Parameters.AddWithValue("@check_name", Trunc(row.Vendor, 100));
+                cmd.Parameters.AddWithValue("@check_no", row.ChequeNo ?? "");
+                cmd.Parameters.AddWithValue("@check_date", (object?)row.ChequeDate ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@created_by", _userId);
+                cmd.Parameters.AddWithValue("@created_date", DateTime.Now);
+                return Convert.ToInt32(await cmd.ExecuteScalarAsync());
+            }
+
+            private async Task InsertCheckDetailsAsync(MySqlConnection conn, MySqlTransaction tx,
+                PdcRow row, int pvId, string code)
+            {
+                var sql = @"
+                INSERT INTO tbl_check_details
+                (date, check_id, check_no, check_date, check_type, pvc_no, check_name, amount, state)
+                VALUES (@date, 0, @check_no, @check_date, 'Payment', @pvc_no, @check_name, @amount, 'New');";
+                using var cmd = new MySqlCommand(sql, conn, tx);
+                cmd.Parameters.AddWithValue("@date", row.Date);
+                cmd.Parameters.AddWithValue("@check_no", row.ChequeNo ?? "");
+                cmd.Parameters.AddWithValue("@check_date", (object?)row.ChequeDate ?? row.Date);
+                cmd.Parameters.AddWithValue("@pvc_no", pvId);
+                cmd.Parameters.AddWithValue("@check_name", Trunc(row.Vendor, 100));
+                cmd.Parameters.AddWithValue("@amount", row.Amount);
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            private async Task AddTransactionsEntryAsync(MySqlConnection conn, MySqlTransaction tx,
+                DateTime date, string accountId, decimal debit, decimal credit, string transactionId,
+                string humId, string tType, string type, string description, int createdBy,
+                DateTime createdDate, string voucherNo)
+            {
+                var sql = @"
+                INSERT INTO tbl_transaction
+                (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no)
+                VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @type, @description, @createdBy, @createdDate, 0, @voucher_no);";
+                using var cmd = new MySqlCommand(sql, conn, tx);
+                cmd.Parameters.AddWithValue("@date", date);
+                cmd.Parameters.AddWithValue("@accountId", accountId);
+                cmd.Parameters.AddWithValue("@debit", debit);
+                cmd.Parameters.AddWithValue("@credit", credit);
+                cmd.Parameters.AddWithValue("@transactionId", transactionId);
+                cmd.Parameters.AddWithValue("@hum_id", humId);
+                cmd.Parameters.AddWithValue("@tType", tType);
+                cmd.Parameters.AddWithValue("@type", type);
+                cmd.Parameters.AddWithValue("@description", description);
+                cmd.Parameters.AddWithValue("@createdBy", createdBy);
+                cmd.Parameters.AddWithValue("@createdDate", createdDate);
+                cmd.Parameters.AddWithValue("@voucher_no", voucherNo);
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            private async Task InsertCostCenterAsync(MySqlConnection conn, MySqlTransaction tx,
+                DateTime date, decimal debit, decimal credit, string refId, string type, string description, string costCenterId)
+            {
+                var sql = @"
+                INSERT INTO tbl_cost_center_transaction
+                (type, date, ref_id, debit, credit, description, cost_center_id)
+                VALUES (@type, @date, @ref, @debit, @credit, @description, @cc);";
+                using var cmd = new MySqlCommand(sql, conn, tx);
+                cmd.Parameters.AddWithValue("@date", date);
+                cmd.Parameters.AddWithValue("@type", type);
+                cmd.Parameters.AddWithValue("@ref", refId);
+                cmd.Parameters.AddWithValue("@debit", debit);
+                cmd.Parameters.AddWithValue("@credit", credit);
+                cmd.Parameters.AddWithValue("@description", description);
+                cmd.Parameters.AddWithValue("@cc", costCenterId);
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            // ---------------- reader ----------------
+            private List<PdcRow> ReasdRows(string filePath)
+            {
+                var rows = new List<PdcRow>();
+                using var wb = new XLWorkbook(filePath);
+                var ws = wb.Worksheets.First();
+
+                foreach (var r in ws.RowsUsed())
+                {
+                    string a = r.Cell("A").GetString().Trim();
+                    // skip banners + header
+                    if (a.StartsWith("Type", StringComparison.OrdinalIgnoreCase) ||
+                        a.StartsWith("From Date", StringComparison.OrdinalIgnoreCase) ||
+                        a.Equals("Date", StringComparison.OrdinalIgnoreCase)) continue;
+                    if (a.Length == 0) continue;
+
+                    DateTime date;
+                    var aCell = r.Cell("A");
+                    if (aCell.DataType == XLDataType.DateTime) date = aCell.GetDateTime();
+                    else if (!TryParsesDate(a, out date)) { Console.WriteLine($"Row {r.RowNumber()} bad date: {a}"); continue; }
+
+                    DateTime? chqDate = null;
+                    var gCell = r.Cell("G");
+                    if (gCell.DataType == XLDataType.DateTime) chqDate = gCell.GetDateTime();
+                    else if (TryParsesDate(gCell.GetString().Trim(), out var cd)) chqDate = cd;
+
+                    rows.Add(new PdcRow
+                    {
+                        Date = date,
+                        Sn = r.Cell("B").GetString().Trim(),
+                        AccountName = r.Cell("C").GetString().Trim(),
+                        Vendor = r.Cell("D").GetString().Trim(),
+                        Bank = r.Cell("E").GetString().Trim(),
+                        ChequeNo = r.Cell("F").GetString().Trim(),
+                        ChequeDate = chqDate,
+                        Details = r.Cell("H").GetString().Trim(),
+                        Amount = ParseNum(r.Cell("I")),
+                    });
+                }
+                Console.WriteLine($"ReadRows: parsed {rows.Count}");
+                return rows;
+            }
+
+            private static string Trunc(string s, int max) =>
+                string.IsNullOrEmpty(s) ? "" : (s.Length > max ? s.Substring(0, max) : s);
+
+            private static decimal ParseNum(IXLCell cell)
+            {
+                if (cell.DataType == XLDataType.Number) return (decimal)cell.GetDouble();
+                var s = cell.GetString().Replace(",", "").Trim();
+                if (s.Length == 0 || s == "-") return 0m;
+                return decimal.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? d : 0m;
+            }
+
+            private static bool TryParsesDate(string s, out DateTime date)
+            {
+                if (DateTime.TryParseExact(s, _dateFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
+                    return true;
+                if (double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var oa))
+                { date = DateTime.FromOADate(oa); return true; }
+                return DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
+            }
+
+            private class PdcRow
+            {
+                public DateTime Date { get; set; }
+                public string Sn { get; set; } = "";
+                public string AccountName { get; set; } = "";
+                public string Vendor { get; set; } = "";
+                public string Bank { get; set; } = "";
+                public string ChequeNo { get; set; } = "";
+                public DateTime? ChequeDate { get; set; }
+                public string Details { get; set; } = "";
+                public decimal Amount { get; set; }
+            }
+
+        #endregion
     }
 }
+
+
+
 
 

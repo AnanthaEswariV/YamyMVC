@@ -348,7 +348,7 @@
             formData.append('file', fileInput.files[0]);
 
             $.ajax({
-                  url: '@Url.Action("ImportPurchaseInvoices2", "Migration")',
+                  url: '@Url.Action("ImportPdcPayments", "Migration")',
                 type: 'POST',
                 data: formData,
                 processData: false,
