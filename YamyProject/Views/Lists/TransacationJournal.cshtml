@@ -103,6 +103,14 @@
                 </tr>
             </thead>
             <tbody></tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="6" class="text-end">TOTAL</th>
+                    <th class="text-end" id="footDebit"></th>
+                    <th class="text-end" id="footCredit"></th>
+                    <th></th>
+                </tr>
+            </tfoot>
         </table>
 
     </div>
@@ -177,120 +185,70 @@
             loadJournal(selectionMethod, transactionId, fromDate, toDate);
 
             // --- Load Journal Function ---
-            function loadJournal(selectionMethod, transactionId, fromDate, toDate) {
-              
-                const data = {
-                    selectionMethod: selectionMethod || 'Default',
-                    transactionId: transactionId ? parseInt(transactionId) : null
-                };
+                 function loadJournal(selectionMethod, transactionId, fromDate, toDate) {
 
-                if (fromDate && toDate) {
-                    data.filterByDate = true;
-                    data.fromDate = fromDate;
-                    data.toDate = toDate;
-                } else {
-                    data.filterByDate = false;
-                }
-
-                $.ajax({
-                url: '@Url.Action("GetJournal", "Lists")',
-                    type: 'GET',
-                    data: data,
-                    beforeSend: function () {
-                        // Destroy existing DataTable before showing loading message
-                        if ($.fn.DataTable.isDataTable("#table1")) {
-                            $("#table1").DataTable().clear().destroy();
-                        }
-                        $('#table1 tbody').html('<tr><td colspan="8" class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>');
-                    },
-                    success: function (res) {
-                      console.log(res);
-                        const tbody = $('#table1 tbody').empty();
-
-                        if (res.status && res.data && res.data.length > 0) {
-                            $.each(res.data, function (i, row) {
-                                // Format numbers with 2 decimal places
-                                const debit = row.Debit != null ? parseFloat(row.Debit).toFixed(2) : '0.00';
-                                const credit = row.Credit != null ? parseFloat(row.Credit).toFixed(2) : '0.00';
-
-                                // Format date
-                                let dateStr = '';
-                                if (row.Date) {
-                                    const d = new Date(row.Date);
-                                    dateStr = d.toLocaleDateString('en-GB'); // DD/MM/YYYY format
-                                }
-
-                                tbody.append(`
-                                    <tr>
-                                        <td>${row.SN ?? ""}</td>
-                                        <td>${row.RefId ?? ""}</td>
-                                        <td>${dateStr}</td>
-                                        <td>${row.Type ?? ""}</td>
-                                        <td>${row.ACCode ?? ""}</td>
-                                        <td>${row.ACName ?? ""}</td>
-                                        <td class="text-end">${debit}</td>
-                                        <td class="text-end">${credit}</td>
-                                        <td>${row.CostCenterName ?? "-"}</td>
-                                    </tr>
-                                `);
-                            });
-
-                            // Initialize DataTable
-                            $('#table1').DataTable({
-                                dom: 'Bfrtip',
-                                buttons: [
-                                    {
-                                        extend: 'excelHtml5',
-                                        className: 'btn btn-primary btn-sm',
-                                        text: '<i class="fas fa-file-excel"></i> Excel',
-                                        title: 'Transaction Journal - ' + selectionMethod,
-                                        exportOptions: {
-                                            columns: ':visible'
-                                        }
-                                    },
-                                    {
-                                      extend: 'print',
-                                      text: '<i class="fas fa-print me-1"></i> Print',
-                                      className: 'btn btn-primary btn-sm',
-                                       exportOptions: {
-                                            columns: ':visible'
-                                        }
-                                    }
-                                ],
-                                order: [[0, 'asc']],
-                                pageLength: 15,
-                                lengthMenu: [[10, 15, 25, 50, 100, -1], [10, 15, 25, 50, 100, "All"]],
-                                language: {
-                                    search: "Search:",
-                                    lengthMenu: "Show _MENU_ entries",
-                                    info: "Showing _START_ to _END_ of _TOTAL_ entries",
-                                    infoEmpty: "Showing 0 to 0 of 0 entries",
-                                    infoFiltered: "(filtered from _MAX_ total entries)",
-                                    paginate: {
-                                        first: "First",
-                                        last: "Last",
-                                        next: "Next",
-                                        previous: "Previous"
-                                    }
-                                },
-                                responsive: true
-                            });
-
-                            // Show success message
-                            toastr.success(`Loaded ${res.data.length} records`, 'Success');
-
-                        } else {
-                            tbody.append('<tr><td colspan="8" class="text-center py-4 text-muted"><i class="fas fa-info-circle"></i> No records found</td></tr>');
-                            toastr.info('No records found', 'Info');
-                        }
-                    },
-                    error: function (xhr, status, error) {
-                        console.error('API Error:', xhr.responseText);
-                        $('#table1 tbody').html('<tr><td colspan="8" class="text-center py-4 text-danger"><i class="fas fa-exclamation-triangle"></i> Error loading data</td></tr>');
-                        toastr.error('Failed to load data: ' + error, 'Error');
-                    }
-                });
+            if ($.fn.DataTable.isDataTable("#table1")) {
+                $("#table1").DataTable().destroy();
+                $('#table1 tbody').empty();
             }
+
+            $('#table1').DataTable({
+                processing: true,
+                serverSide: true,
+                ordering: false, // server always orders by date; see note
+                ajax: {
+                    url: '@Url.Action("GetJournal", "Lists")',
+                    type: 'GET',
+                    data: function (d) {
+                        d.selectionMethod = selectionMethod || 'Default';
+                        d.transactionId   = transactionId ? parseInt(transactionId) : null;
+                        if (fromDate && toDate) {
+                            d.filterByDate = true;
+                            d.fromDate = fromDate;
+                            d.toDate = toDate;
+                        } else {
+                            d.filterByDate = false;
+                        }
+                        d.searchValue = (d.search && d.search.value) ? d.search.value : '';
+                    },
+                    dataSrc: function (json) {
+                        window._journalTotals = { debit: json.totalDebit, credit: json.totalCredit };
+                        return json.data;
+                    }
+                },
+                columns: [
+                    { data: 'SN' },
+                    { data: 'RefId', defaultContent: '' },
+                    { data: 'Date', render: d => d ? new Date(d).toLocaleDateString('en-GB') : '' },
+                    { data: 'Type', defaultContent: '' },
+                    { data: 'ACCode', defaultContent: '' },
+                    { data: 'ACName', defaultContent: '' },
+                    { data: 'Debit',  className: 'text-end', render: d => d != null ? parseFloat(d).toFixed(2) : '0.00' },
+                    { data: 'Credit', className: 'text-end', render: d => d != null ? parseFloat(d).toFixed(2) : '0.00' },
+                    { data: 'CostCenterName', defaultContent: '-' }
+                ],
+                pageLength: 15,
+                lengthMenu: [[10, 15, 25, 50, 100], [10, 15, 25, 50, 100]],
+                dom: 'Bfrtip',
+                buttons: [
+                    { extend: 'excelHtml5', className: 'btn btn-primary btn-sm', text: '<i class="fas fa-file-excel"></i> Excel', title: 'Transaction Journal - ' + selectionMethod },
+                    { extend: 'print', className: 'btn btn-primary btn-sm', text: '<i class="fas fa-print me-1"></i> Print' }
+                ],
+                responsive: true,
+                drawCallback: function () {
+                    const t = window._journalTotals || { debit: 0, credit: 0 };
+                    $('#footDebit').text(parseFloat(t.debit  || 0).toFixed(2));
+                    $('#footCredit').text(parseFloat(t.credit || 0).toFixed(2));
+                },
+                language: {
+                    search: "Search:",
+                    lengthMenu: "Show _MENU_ entries",
+                    info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                    infoEmpty: "Showing 0 to 0 of 0 entries",
+                    paginate: { first: "First", last: "Last", next: "Next", previous: "Previous" }
+                }
+            });
+        }
 
                     // Inside loadJournal success after DataTable initialization:
         $('#table1 tbody').on('click', 'tr', function () {
