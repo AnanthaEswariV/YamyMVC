@@ -1257,7 +1257,7 @@ namespace YamyProject.Controllers
                           `debit` decimal(20,4) NOT NULL DEFAULT '0.000',
                           `credit` decimal(20,4) NOT NULL DEFAULT '0.000',
                           `inv_id` int NOT NULL DEFAULT '0',
-                          `description` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `description` varchar(5000) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `partner` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
                           `account_id` int NOT NULL DEFAULT '0',
                           `project_id` INT NOT NULL DEFAULT 0,

@@ -14,7 +14,7 @@ namespace YamyProject.Controllers
         }
   
         private readonly int _warehouseId = 1;          
-        private readonly int _userId = 1;          
+        //private readonly int _userId = 1;          
         private readonly string _paymentMethod = "Credit";   
         private readonly int _accountCashId = 0;         
         private readonly string _revenueItemName = "ايراد ضريبي"; 
@@ -39,7 +39,8 @@ namespace YamyProject.Controllers
         private readonly string _paymentType = "Customer";
         private int _arAccountId;        // default Customer A/R (coa_config "Customer")
         private int _cashAccountId;      // fallback bank/cash account if a name doesn't resolve
-
+        private int _userId;
+        private readonly Dictionary<string, int> _projectByName = new();
 
         #region SalesInvoice
 
@@ -2115,6 +2116,480 @@ namespace YamyProject.Controllers
             public DateTime? ChequeDate { get; set; }
             public string Type { get; set; } = "";
             public decimal Amount { get; set; }
+        }
+
+        #endregion
+
+        #region Journal Voucher
+
+        [HttpPost]
+        public async Task<IActionResult> ImportJournalVouchers(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { status = false, message = "Please select a file." });
+
+            var dir = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
+            Directory.CreateDirectory(dir);
+            var path = Path.Combine(dir, file.FileName);
+            using (var s = new FileStream(path, FileMode.Create))
+                await file.CopyToAsync(s);
+
+            var result = await ImportJournalVouchersAsync(path);
+            return Ok(new { status = true, message = "Import completed", result });
+        }
+
+        public async Task<object> ImportJournalVouchersAsync(string filePath)
+        {
+            var rows = ReadJVRows(filePath);
+
+            // Group by SN -> one journal voucher per serial
+            var groups = rows
+                .Select((r, i) => (row: r, idx: i))
+                .GroupBy(x => x.row.Sn.Trim())
+                .ToList();
+
+            Console.WriteLine($"Total rows: {rows.Count}, journal vouchers (by SN): {groups.Count}");
+
+            int success = 0, skipped = 0, failed = 0;
+            var errors = new List<string>();
+            var failedList = new List<object>();   // structured: { sn, code, reason }
+
+            // Get userId from session
+            _userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (_userId <= 0)
+                return new { status = false, error = "User not authenticated" };
+
+            var bootBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase"),
+                CharacterSet = "utf8mb4"
+            };
+            using (var bconn = new MySqlConnection(bootBuilder.ConnectionString))
+            {
+                await bconn.OpenAsync();
+                await LoadAccountCacheAsync(bconn);
+            }
+
+            foreach (var grp in groups)
+            {
+                var lines = grp.OrderBy(x => x.idx).Select(x => x.row).ToList();
+                var headRow = lines[0];
+                string sn = headRow.Sn.Trim();
+                string jvCode = $"JV-{sn}"; // Use SN as code, no auto-increment
+
+                // remember which project names we created in THIS group, so we can
+                // drop them from the cache if the group rolls back (avoids stale ids)
+                var createdProjectKeys = new List<string>();
+
+                try
+                {
+                    var connBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                    {
+                        Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase"),
+                        CharacterSet = "utf8mb4"
+                    };
+                    using var conn = new MySqlConnection(connBuilder.ConnectionString);
+                    await conn.OpenAsync();
+                    using var tx = await conn.BeginTransactionAsync();
+
+                    try
+                    {
+                        decimal totalDebit = lines.Sum(l => l.Debit);
+                        decimal totalCredit = lines.Sum(l => l.Credit);
+
+                        if (Math.Abs(totalDebit - totalCredit) > 0.01m)
+                        {
+                            failed++;
+                            errors.Add($"SN {sn}: Debit ({totalDebit}) ≠ Credit ({totalCredit})");
+                            failedList.Add(new { sn, code = jvCode, reason = $"Debit {totalDebit} ≠ Credit {totalCredit}" });
+                            await tx.RollbackAsync();
+                            InvalidateProjects(createdProjectKeys);
+                            continue;
+                        }
+
+                        if (totalDebit <= 0 || totalCredit <= 0)
+                        {
+                            skipped++;
+                            errors.Add($"SN {sn}: Debit or Credit is zero or negative");
+                            await tx.RollbackAsync();
+                            InvalidateProjects(createdProjectKeys);
+                            continue;
+                        }
+
+                        // 1) header
+                        int jvId = await InsertJournalVoucherAsync(conn, tx, headRow, jvCode, totalDebit, totalCredit);
+                        if (jvId <= 0)
+                        {
+                            failed++;
+                            errors.Add($"SN {sn}: Failed to insert journal voucher header");
+                            failedList.Add(new { sn, code = jvCode, reason = "Header insert failed" });
+                            await tx.RollbackAsync();
+                            InvalidateProjects(createdProjectKeys);
+                            continue;
+                        }
+
+                        // 2) details + GL transactions
+                        foreach (var line in lines)
+                        {
+                            int accountId = await ResolveAccountIdAsync(conn, tx, line.AccountName);
+                            if (accountId <= 0)
+                            {
+                                failed++;
+                                errors.Add($"SN {sn}: Account '{line.AccountName}' not found");
+                                failedList.Add(new { sn, code = jvCode, reason = $"Account not found: '{line.AccountName}'" });
+                                await tx.RollbackAsync();
+                                InvalidateProjects(createdProjectKeys);
+                                goto NextGroup;
+                            }
+
+                            int projectId = await GetOrCreateProjectIdAsync(conn, tx, line.Project, createdProjectKeys);
+
+                            await InsertJVDetailAsync(conn, tx, headRow.Date, jvId, accountId,
+                                line.Debit, line.Credit, line.Description, line.Partner, projectId);
+
+                            if (line.Debit > 0)
+                                await InsertJVTransactionAsync(conn, tx, headRow.Date, accountId,
+                                    line.Debit, 0, jvId, line.Description, jvCode);
+
+                            if (line.Credit > 0)
+                                await InsertJVTransactionAsync(conn, tx, headRow.Date, accountId,
+                                    0, line.Credit, jvId, line.Description, jvCode);
+                        }
+
+                        await tx.CommitAsync();
+                        success++;
+                        Console.WriteLine($"[OK] SN={sn} code={jvCode} lines={lines.Count} debit={totalDebit} credit={totalCredit} jvId={jvId}");
+                    }
+                    catch (Exception ex)
+                    {
+                        await tx.RollbackAsync();
+                        InvalidateProjects(createdProjectKeys);
+                        failed++;
+                        errors.Add($"SN {sn}: {ex.Message}");
+                        failedList.Add(new { sn, code = jvCode, reason = ex.Message });
+                        Console.WriteLine($"[FAIL] SN={sn} => {ex.Message}");
+                    }
+
+                NextGroup:;
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    errors.Add($"SN {sn}: (connection) {ex.Message}");
+                    failedList.Add(new { sn, code = jvCode, reason = $"(connection) {ex.Message}" });
+                }
+            }
+
+            Console.WriteLine("===========================================");
+            Console.WriteLine($"Done. Success={success} Skipped={skipped} Failed={failed}");
+            if (failedList.Count > 0)
+                Console.WriteLine("FAILURES:\n" + string.Join("\n", errors));
+            return new
+            {
+                totalRows = rows.Count,
+                journalVouchers = groups.Count,
+                success,
+                skipped,
+                failed,
+                failedList,
+                errors
+            };
+        }
+
+        // drop project-cache entries that were created in a rolled-back group
+        private void InvalidateProjects(List<string> keys)
+        {
+            foreach (var k in keys)
+                _projectByName.Remove(k);
+            keys.Clear();
+        }
+
+        // ============== INSERT METHODS ==============
+
+        private async Task<int> InsertJournalVoucherAsync(MySqlConnection conn, MySqlTransaction tx,
+            JVRow headRow, string code, decimal debit, decimal credit)
+        {
+            var sql = @"
+INSERT INTO tbl_journal_voucher
+(date, code, debit, credit, created_by, created_date, state)
+VALUES (@date, @code, @debit, @credit, @created_by, @created_date, 0);
+SELECT LAST_INSERT_ID();";
+
+            using var cmd = new MySqlCommand(sql, conn, tx);
+            cmd.Parameters.AddWithValue("@date", headRow.Date);
+            cmd.Parameters.AddWithValue("@code", code);
+            cmd.Parameters.AddWithValue("@debit", debit);
+            cmd.Parameters.AddWithValue("@credit", credit);
+            cmd.Parameters.AddWithValue("@created_by", _userId);
+            cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
+
+            var result = await cmd.ExecuteScalarAsync();
+            return (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
+        }
+
+        private async Task InsertJVDetailAsync(MySqlConnection conn, MySqlTransaction tx,
+            DateTime date, int jvId, int accountId, decimal debit, decimal credit,
+            string description, string partner, int projectId)
+        {
+            var sql = @"
+INSERT INTO tbl_journal_voucher_details
+(date, debit, credit, inv_id, description, account_id, partner, project_id)
+VALUES (@date, @debit, @credit, @inv_id, @description, @account_id, @partner, @project_id)";
+
+            using var cmd = new MySqlCommand(sql, conn, tx);
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@debit", debit);
+            cmd.Parameters.AddWithValue("@credit", credit);
+            cmd.Parameters.AddWithValue("@inv_id", jvId);
+            cmd.Parameters.AddWithValue("@description", Truncate(description ?? "", 500));
+            cmd.Parameters.AddWithValue("@account_id", accountId);
+            cmd.Parameters.AddWithValue("@partner", Truncate(partner ?? "", 200));
+            // project_id is NOT NULL -> store 0 when the line has no project (contra lines)
+            cmd.Parameters.AddWithValue("@project_id", projectId > 0 ? projectId : 0);
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        private async Task InsertJVTransactionAsync(MySqlConnection conn, MySqlTransaction tx,
+            DateTime date, int accountId, decimal debit, decimal credit, int jvId,
+            string description, string voucherCode)
+        {
+            var sql = @"
+INSERT INTO tbl_transaction
+(date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no)
+VALUES (@date, @account_id, @debit, @credit, @transaction_id, @hum_id, @t_type, @type, @description, @created_by, @created_date, 0, @voucher_no)";
+
+            using var cmd = new MySqlCommand(sql, conn, tx);
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@account_id", accountId);
+            cmd.Parameters.AddWithValue("@debit", debit);
+            cmd.Parameters.AddWithValue("@credit", credit);
+            cmd.Parameters.AddWithValue("@transaction_id", jvId);
+            cmd.Parameters.AddWithValue("@hum_id", 0);
+            cmd.Parameters.AddWithValue("@t_type", "JOURNAL");
+            cmd.Parameters.AddWithValue("@type", "JOURNAL VOUCHER");
+            // use the real line description; fall back to the boilerplate if empty
+            cmd.Parameters.AddWithValue("@description",
+                string.IsNullOrWhiteSpace(description) ? $"Journal Voucher NO. {voucherCode}" : Truncate(description, 250));
+            cmd.Parameters.AddWithValue("@created_by", _userId);
+            cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
+            cmd.Parameters.AddWithValue("@voucher_no", voucherCode);
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        // ============== HELPERS ==============
+
+        private async Task LoadAccountCacheAsync(MySqlConnection conn)
+        {
+            using var cmd = new MySqlCommand(
+                "SELECT id, name FROM tbl_coa_level_4 ORDER BY name", conn);
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var key = reader.GetString("name").Trim();
+                var id = reader.GetInt32("id");
+                if (!_accountByName.ContainsKey(key))
+                    _accountByName[key] = id;
+            }
+        }
+
+        // get-or-create project; records newly created keys so they can be invalidated on rollback
+        private async Task<int> GetOrCreateProjectIdAsync(MySqlConnection conn, MySqlTransaction tx,
+            string name, List<string> createdKeys)
+        {
+            var key = (name ?? "").Trim().Trim('\uFEFF', '\u200E', '\u200F');
+            if (key.Length == 0) return 0;                       // contra lines: no project
+            if (_projectByName.TryGetValue(key, out var cached)) return cached;
+
+            // try existing
+            using (var find = new MySqlCommand(
+                "SELECT id FROM tbl_projects WHERE TRIM(name)=TRIM(@n) LIMIT 1", conn, tx))
+            {
+                find.Parameters.AddWithValue("@n", key);
+                var res = await find.ExecuteScalarAsync();
+                if (res != null && res != DBNull.Value)
+                {
+                    int existing = Convert.ToInt32(res);
+                    _projectByName[key] = existing;
+                    return existing;
+                }
+            }
+
+            // create — adjust columns to YOUR tbl_projects (fill every NOT-NULL column)
+            using (var ins = new MySqlCommand(@"
+INSERT INTO tbl_projects (name)
+VALUES (@n);
+SELECT LAST_INSERT_ID();", conn, tx))
+            {
+                ins.Parameters.AddWithValue("@n", key);
+                int newId = Convert.ToInt32(await ins.ExecuteScalarAsync());
+                _projectByName[key] = newId;
+                createdKeys.Add(key);     // so we can roll the cache back if this group fails
+                Console.WriteLine($"[PROJECT+] created '{key}' -> id {newId}");
+                return newId;
+            }
+        }
+
+        private async Task<int> ResolveAccountIdAsync(MySqlConnection conn, MySqlTransaction tx, string accountName)
+        {
+            var key = (accountName ?? "").Trim();
+            if (key.Length == 0) return 0;
+
+            if (_accountByName.TryGetValue(key, out var cachedId))
+                return cachedId;
+
+            using var cmd = new MySqlCommand(
+                "SELECT id FROM tbl_coa_level_4 WHERE TRIM(name)=TRIM(@n) OR TRIM(name) LIKE CONCAT('%',TRIM(@n),'%') LIMIT 1",
+                conn, tx);
+            cmd.Parameters.AddWithValue("@n", key);
+            var result = await cmd.ExecuteScalarAsync();
+            int id = (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
+
+            _accountByName[key] = id;
+            return id;
+        }
+
+        // ============== EXCEL READER ==============
+
+        private List<JVRow> ReadJVRows(string filePath)
+        {
+            var rows = new List<JVRow>();
+            using var wb = new XLWorkbook(filePath);
+            var ws = wb.Worksheets.First();
+
+            var snDateCache = new Dictionary<string, DateTime>();
+            var snProjectCache = new Dictionary<string, string>();   // header line's project, inherited by contra lines
+
+            // Skip rows 0-4 (metadata + header at index 4), data from index 5+
+            foreach (var r in ws.RowsUsed().Skip(5))
+            {
+                string snStr = r.Cell("A").GetString().Trim();
+                string dateStr = r.Cell("B").GetString().Trim();
+
+                if (snStr.StartsWith("="))
+                {
+                    var aCell = r.Cell("A");
+                    snStr = aCell.DataType == XLDataType.Number
+                        ? ((int)aCell.GetDouble()).ToString()
+                        : aCell.GetString().Trim();
+                }
+
+                if (snStr.Equals("SN", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                string sn = snStr;
+
+                DateTime date;
+                if (string.IsNullOrWhiteSpace(dateStr))
+                {
+                    if (snDateCache.ContainsKey(sn))
+                        date = snDateCache[sn];
+                    else
+                    {
+                        Console.WriteLine($"Row {r.RowNumber()}: SN={sn} has no cached date - skipping");
+                        continue;
+                    }
+                }
+                else
+                {
+                    var bCell = r.Cell("B");
+                    if (bCell.DataType == XLDataType.DateTime)
+                        date = bCell.GetDateTime();
+                    else if (!TryParsewDate(dateStr, out date))
+                    {
+                        Console.WriteLine($"Row {r.RowNumber()} bad date format: '{dateStr}' - skipping");
+                        continue;
+                    }
+
+                    if (!snDateCache.ContainsKey(sn))
+                        snDateCache[sn] = date;
+                }
+
+                string partner = r.Cell("C").GetString().Trim();   // Noble account/project name
+                string accountName = r.Cell("D").GetString().Trim();   // real GL account
+                string project = r.Cell("E").GetString().Trim();   // Project (blank on contra lines)
+                string description = r.Cell("F").GetString().Trim();
+
+                // project: header line has it; detail (contra) lines are blank -> inherit the SN's project
+                if (string.IsNullOrWhiteSpace(project))
+                {
+                    if (snProjectCache.TryGetValue(sn, out var cachedProj))
+                        project = cachedProj;            // reuse header's project for this SN
+                }
+                else
+                {
+                    if (!snProjectCache.ContainsKey(sn))
+                        snProjectCache[sn] = project;    // cache header's project for this SN
+                }
+                decimal debit = ParseNumber(r.Cell("H"));
+                decimal credit = ParseNumber(r.Cell("I"));
+
+                if (string.IsNullOrWhiteSpace(accountName))
+                    continue;
+                if (debit == 0 && credit == 0)
+                    continue;
+
+                rows.Add(new JVRow
+                {
+                    Sn = sn,
+                    Date = date,
+                    AccountName = accountName,
+                    Partner = partner,
+                    Project = project,
+                    Description = description,
+                    Debit = debit,
+                    Credit = credit
+                });
+            }
+
+            Console.WriteLine($"ReadJVRows: parsed {rows.Count} detail lines from Excel");
+            return rows;
+        }
+
+        // ============== UTILITIES ==============
+
+        private static string Truncate(string s, int max) =>
+            string.IsNullOrEmpty(s) ? "" : (s.Length > max ? s.Substring(0, max) : s);
+
+        private static decimal ParseNumber(IXLCell cell)
+        {
+            if (cell.DataType == XLDataType.Number)
+                return (decimal)cell.GetDouble();
+
+            var s = cell.GetString().Replace(",", "").Trim();
+            if (s.Length == 0 || s == "-")
+                return 0m;
+
+            return decimal.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? d : 0m;
+        }
+
+        private static bool TryParsewDate(string s, out DateTime date)
+        {
+            if (DateTime.TryParseExact(s, _dateFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
+                return true;
+
+            if (double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var oa))
+            {
+                try { date = DateTime.FromOADate(oa); return true; }
+                catch { }
+            }
+
+            return DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
+        }
+
+        // ============== DATA MODEL ==============
+
+        private class JVRow
+        {
+            public string Sn { get; set; } = "";
+            public DateTime Date { get; set; }
+            public string AccountName { get; set; } = "";
+            public string Partner { get; set; } = "";
+            public string Project { get; set; } = "";
+            public string Description { get; set; } = "";
+            public decimal Debit { get; set; }
+            public decimal Credit { get; set; }
         }
 
         #endregion
