@@ -120,6 +120,7 @@
                     <th>Type</th>
                     <th>A/C Code</th>
                     <th>A/C Name</th>
+                    <th>Description</th>
                     <th>Debit</th>
                     <th>Credit</th>
                     <th>CostCenter</th>
@@ -340,6 +341,7 @@
                         'Type': item.Type || '',
                         'A/C Code': item.ACCode || '',
                         'A/C Name': item.ACName || '',
+                         'Description': item.Description || '',
                         'Debit': item.Debit != null ? parseFloat(item.Debit) : 0,  // Keep as number, not string
                         'Credit': item.Credit != null ? parseFloat(item.Credit) : 0,  // Keep as number, not string
                         'CostCenter': item.CostCenterName || '-'
@@ -353,6 +355,7 @@
                         'Type': '',
                         'A/C Code': '',
                         'A/C Name': 'TOTAL',
+                         'Description': '',
                         'Debit': totalDebit,
                         'Credit': totalCredit,
                         'CostCenter': ''
@@ -371,6 +374,7 @@
                         { wch: 18 },  // Type
                         { wch: 12 },  // A/C Code
                         { wch: 20 },  // A/C Name
+                        { wch: 30 },  // Description
                         { wch: 12 },  // Debit
                         { wch: 12 },  // Credit
                         { wch: 15 }   // CostCenter
@@ -491,6 +495,7 @@
                         { data: 'Type', defaultContent: '' },
                         { data: 'ACCode', defaultContent: '' },
                         { data: 'ACName', defaultContent: '' },
+                         {data: 'Description', defaultContent: '' },
                         { data: 'Debit', className: 'text-end', render: d => d != null ? parseFloat(d).toFixed(2) : '0.00' },
                         { data: 'Credit', className: 'text-end', render: d => d != null ? parseFloat(d).toFixed(2) : '0.00' },
                         { data: 'CostCenterName', defaultContent: '-' }
