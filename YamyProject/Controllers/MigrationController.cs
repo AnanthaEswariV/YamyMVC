@@ -455,7 +455,7 @@ namespace YamyProject.Controllers
 
         #endregion
 
-        #region PurchaseInvoice
+        #region PurchaseInvoice Subcontractor
 
         private int _vendorApAccountId, _purchaseAccountId, _vatInputAccountId, _retentionAccountId;
         private readonly Dictionary<string, decimal> _retentionByInvoice = new();
