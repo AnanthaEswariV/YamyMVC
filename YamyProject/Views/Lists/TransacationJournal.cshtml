@@ -13,6 +13,21 @@
             background-color: #3b51a0 !important;
             color: #fff !important;
         }
+
+    .excel-export-btn {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+
+        .excel-export-btn:hover {
+            background-color: #3b51a0 !important;
+        }
 </style>
 <div class="card">
     <div class="card-header text-center">
@@ -87,6 +102,13 @@
 
         </div>
 
+        <!-- Export Button (Standalone) -->
+        <div class="mb-3">
+            <button class="btn excel-export-btn" id="excelExportBtn">
+                <i class="fas fa-file-excel"></i> Export to Excel
+            </button>
+        </div>
+
         <!-- Table -->
         <table class="table table-striped" id="table1">
             <thead>
@@ -127,9 +149,24 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <script>
         $(document).ready(function () {
+
+            // Verify XLSX is loaded
+            if (typeof XLSX !== 'undefined') {
+                console.log('✓ XLSX library loaded successfully');
+            } else {
+                console.error('✗ XLSX library NOT loaded!');
+                setTimeout(function() {
+                    if (typeof XLSX === 'undefined') {
+                        console.error('✗ XLSX still not available after 3 seconds');
+                    } else {
+                        console.log('✓ XLSX library loaded after delay');
+                    }
+                }, 3000);
+            }
 
             const urlParams = new URLSearchParams(window.location.search);
             const transactionId = urlParams.get('transactionId');
@@ -151,17 +188,14 @@
             // --- Dropdown change - automatically load data ---
             $("#transactionSelect").on("change", function () {
                 const selectedMethod = $(this).val()?.trim() || 'Default';
-
                 const fDate = $("#chkAllData").is(":checked") ? null : $("#startDate").val();
                 const tDate = $("#chkAllData").is(":checked") ? null : $("#endDate").val();
-
                 loadJournal(selectedMethod, transactionId, fDate, tDate);
             });
 
             $("#chkAllData").on("change", function () {
                 const checked = $(this).is(":checked");
                 $("#startDate, #endDate").prop("disabled", checked);
-
             });
 
             $("#startDate, #endDate").on("change", function () {
@@ -181,92 +215,321 @@
                 loadJournal(selectedMethod, transactionId, fDate, tDate);
             });
 
+            // --- Excel Export Button Click ---
+            $("#excelExportBtn").on("click", function () {
+                const selectedMethod = $("#transactionSelect").val()?.trim() || 'Default';
+                const fDate = $("#chkAllData").is(":checked") ? null : $("#startDate").val();
+                const tDate = $("#chkAllData").is(":checked") ? null : $("#endDate").val();
+                exportAllDataToExcel(selectedMethod, transactionId, fDate, tDate);
+            });
+
             // --- Initial load ---
             loadJournal(selectionMethod, transactionId, fromDate, toDate);
 
-            // --- Load Journal Function ---
-                 function loadJournal(selectionMethod, transactionId, fromDate, toDate) {
+            // --- Export All Data to Excel Function (Batch Fetching) ---
+            function exportAllDataToExcel(selectionMethod, txnId, fDate, tDate) {
+                console.log('Export function called');
+                toastr.info('Fetching all data...');
 
-            if ($.fn.DataTable.isDataTable("#table1")) {
-                $("#table1").DataTable().destroy();
-                $('#table1 tbody').empty();
+                let allData = [];
+                let currentStart = 0;
+                let batchSize = 1000;
+                let totalRecords = 0;
+                let serverTotalDebit = 0;  // Store server-provided totals
+                let serverTotalCredit = 0;
+
+                function fetchBatch() {
+                    $.ajax({
+                        url: '@Url.Action("GetJournal", "Lists")',
+                        type: 'GET',
+                        dataType: 'json',
+                        data: {
+                            selectionMethod: selectionMethod || 'Default',
+                            transactionId: txnId ? parseInt(txnId) : null,
+                            filterByDate: (fDate && tDate) ? true : false,
+                            fromDate: fDate || null,
+                            toDate: tDate || null,
+                            draw: 1,
+                            start: currentStart,
+                            length: batchSize,
+                            searchValue: ''
+                        },
+                        success: function (response) {
+                            console.log('Batch fetched:', response.data.length, 'records from start:', currentStart);
+
+                            if (!totalRecords) {
+                                totalRecords = response.recordsTotal || response.data.length;
+                                // IMPORTANT: Get totals from server (these are the correct totals for ALL records)
+                                serverTotalDebit = response.totalDebit || 0;
+                                serverTotalCredit = response.totalCredit || 0;
+                                console.log('Total records available:', totalRecords);
+                                console.log('Server totals - Debit:', serverTotalDebit, 'Credit:', serverTotalCredit);
+                            }
+
+                            // Add batch data to collection
+                            if (response.data && response.data.length > 0) {
+                                allData = allData.concat(response.data);
+                                currentStart += batchSize;
+
+                                // Check if we need to fetch more
+                                if (allData.length < totalRecords) {
+                                    toastr.info('Fetching records ' + allData.length + ' of ' + totalRecords + '...');
+                                    setTimeout(fetchBatch, 100);
+                                } else {
+                                    // All data fetched
+                                    console.log('All data fetched:', allData.length, 'records');
+                                    toastr.success('All data loaded, creating Excel...');
+                                    // Pass server totals to Excel creation
+                                    createAndDownloadExcel(allData, selectionMethod, serverTotalDebit, serverTotalCredit);
+                                }
+                            } else {
+                                // No more data
+                                console.log('No more data. Total records fetched:', allData.length);
+                                if (allData.length > 0) {
+                                    createAndDownloadExcel(allData, selectionMethod, serverTotalDebit, serverTotalCredit);
+                                } else {
+                                    toastr.warning('No data available to export');
+                                }
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('Ajax Error:', error);
+                            console.error('Response:', xhr.responseText);
+                            toastr.error('Error fetching data: ' + error);
+                        }
+                    });
+                }
+
+                // Start fetching batches
+                fetchBatch();
             }
 
-            $('#table1').DataTable({
-                processing: true,
-                serverSide: true,
-                ordering: false, // server always orders by date; see note
-                ajax: {
-                    url: '@Url.Action("GetJournal", "Lists")',
-                    type: 'GET',
-                    data: function (d) {
-                        d.selectionMethod = selectionMethod || 'Default';
-                        d.transactionId   = transactionId ? parseInt(transactionId) : null;
-                        if (fromDate && toDate) {
-                            d.filterByDate = true;
-                            d.fromDate = fromDate;
-                            d.toDate = toDate;
-                        } else {
-                            d.filterByDate = false;
-                        }
-                        d.searchValue = (d.search && d.search.value) ? d.search.value : '';
-                    },
-                    dataSrc: function (json) {
-                        window._journalTotals = { debit: json.totalDebit, credit: json.totalCredit };
-                        return json.data;
+            // --- Create and Download Excel File ---
+            function createAndDownloadExcel(data, selectionMethod, serverTotalDebit, serverTotalCredit) {
+                try {
+                    console.log('Creating Excel with', data.length, 'rows');
+
+                    // Check if XLSX is available, if not wait a bit
+                    if (typeof XLSX === 'undefined') {
+                        console.warn('XLSX not available yet, waiting...');
+                        toastr.warning('Excel library loading, please wait...');
+                        setTimeout(function() {
+                            if (typeof XLSX !== 'undefined') {
+                                createAndDownloadExcel(data, selectionMethod, serverTotalDebit, serverTotalCredit);
+                            } else {
+                                toastr.error('Excel library failed to load. Try refreshing the page.');
+                            }
+                        }, 2000);
+                        return;
                     }
-                },
-                columns: [
-                    { data: 'SN' },
-                    { data: 'RefId', defaultContent: '' },
-                    { data: 'Date', render: d => d ? new Date(d).toLocaleDateString('en-GB') : '' },
-                    { data: 'Type', defaultContent: '' },
-                    { data: 'ACCode', defaultContent: '' },
-                    { data: 'ACName', defaultContent: '' },
-                    { data: 'Debit',  className: 'text-end', render: d => d != null ? parseFloat(d).toFixed(2) : '0.00' },
-                    { data: 'Credit', className: 'text-end', render: d => d != null ? parseFloat(d).toFixed(2) : '0.00' },
-                    { data: 'CostCenterName', defaultContent: '-' }
-                ],
-                pageLength: 15,
-                lengthMenu: [[10, 15, 25, 50, 100], [10, 15, 25, 50, 100]],
-                dom: 'Bfrtip',
-                buttons: [
-                    { extend: 'excelHtml5', className: 'btn btn-primary btn-sm', text: '<i class="fas fa-file-excel"></i> Excel', title: 'Transaction Journal - ' + selectionMethod },
-                    { extend: 'print', className: 'btn btn-primary btn-sm', text: '<i class="fas fa-print me-1"></i> Print' }
-                ],
-                responsive: true,
-                drawCallback: function () {
-                    const t = window._journalTotals || { debit: 0, credit: 0 };
-                    $('#footDebit').text(parseFloat(t.debit  || 0).toFixed(2));
-                    $('#footCredit').text(parseFloat(t.credit || 0).toFixed(2));
-                },
-                language: {
-                    search: "Search:",
-                    lengthMenu: "Show _MENU_ entries",
-                    info: "Showing _START_ to _END_ of _TOTAL_ entries",
-                    infoEmpty: "Showing 0 to 0 of 0 entries",
-                    paginate: { first: "First", last: "Last", next: "Next", previous: "Previous" }
+
+                    toastr.info('Processing ' + data.length + ' records for Excel...');
+
+                    // Use server-provided totals (these are the correct totals)
+                    let totalDebit = serverTotalDebit || 0;
+                    let totalCredit = serverTotalCredit || 0;
+
+                    console.log('Using server totals - Debit:', totalDebit, 'Credit:', totalCredit);
+
+                    // Prepare data for Excel - keep numbers as actual numbers, not strings
+                    const excelData = data.map((item, index) => ({
+                        'S.No': index + 1,
+                        'Ref_Id': item.RefId || '',
+                        'Date': item.Date ? new Date(item.Date).toLocaleDateString('en-GB') : '',
+                        'Type': item.Type || '',
+                        'A/C Code': item.ACCode || '',
+                        'A/C Name': item.ACName || '',
+                        'Debit': item.Debit != null ? parseFloat(item.Debit) : 0,  // Keep as number, not string
+                        'Credit': item.Credit != null ? parseFloat(item.Credit) : 0,  // Keep as number, not string
+                        'CostCenter': item.CostCenterName || '-'
+                    }));
+
+                    // Add a blank row, then total row
+                    excelData.push({
+                        'S.No': '',
+                        'Ref_Id': '',
+                        'Date': '',
+                        'Type': '',
+                        'A/C Code': '',
+                        'A/C Name': 'TOTAL',
+                        'Debit': totalDebit,
+                        'Credit': totalCredit,
+                        'CostCenter': ''
+                    });
+
+                    console.log('Data prepared with totals, creating worksheet...');
+
+                    // Create worksheet
+                    const ws = XLSX.utils.json_to_sheet(excelData);
+
+                    // Set column widths and number formats
+                    ws['!cols'] = [
+                        { wch: 8 },   // S.No
+                        { wch: 12 },  // Ref_Id
+                        { wch: 12 },  // Date
+                        { wch: 18 },  // Type
+                        { wch: 12 },  // A/C Code
+                        { wch: 20 },  // A/C Name
+                        { wch: 12 },  // Debit
+                        { wch: 12 },  // Credit
+                        { wch: 15 }   // CostCenter
+                    ];
+
+                    // Format number columns (Debit and Credit) with 2 decimal places
+                    // Also make total row bold
+                    const range = XLSX.utils.decode_range(ws['!ref']);
+                    const lastRow = range.e.r;
+
+                    for (let row = 1; row <= range.e.r; row++) {
+                        // Debit column (G = 6)
+                        const debitCell = XLSX.utils.encode_cell({ r: row, c: 6 });
+                        if (ws[debitCell]) {
+                            ws[debitCell].z = '0.00';  // Number format with 2 decimals
+
+                            // Make total row bold
+                            if (row === lastRow) {
+                                if (!ws[debitCell].s) ws[debitCell].s = {};
+                                ws[debitCell].s.bold = true;
+                                ws[debitCell].s.fill = { fgColor: { rgb: 'FFCCCCCC' } }; // Light gray background
+                            }
+                        }
+
+                        // Credit column (H = 7)
+                        const creditCell = XLSX.utils.encode_cell({ r: row, c: 7 });
+                        if (ws[creditCell]) {
+                            ws[creditCell].z = '0.00';  // Number format with 2 decimals
+
+                            // Make total row bold
+                            if (row === lastRow) {
+                                if (!ws[creditCell].s) ws[creditCell].s = {};
+                                ws[creditCell].s.bold = true;
+                                ws[creditCell].s.fill = { fgColor: { rgb: 'FFCCCCCC' } }; // Light gray background
+                            }
+                        }
+
+                        // A/C Name column for total row - make bold
+                        if (row === lastRow) {
+                            const nameCell = XLSX.utils.encode_cell({ r: row, c: 5 });
+                            if (ws[nameCell]) {
+                                if (!ws[nameCell].s) ws[nameCell].s = {};
+                                ws[nameCell].s.bold = true;
+                                ws[nameCell].s.fill = { fgColor: { rgb: 'FFCCCCCC' } }; // Light gray background
+                            }
+                        }
+                    }
+
+                    // Freeze first row (header)
+                    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+                    console.log('Creating workbook...');
+
+                    // Create workbook
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, 'Transaction Journal');
+
+                    // Generate filename with timestamp
+                    const timestamp = new Date().toISOString().split('T')[0];
+                    const filename = 'TransactionJournal_' + selectionMethod + '_' + timestamp + '.xlsx';
+
+                    console.log('Writing file:', filename);
+                    console.log('Excel file totals - Debit: ' + totalDebit.toFixed(2) + ', Credit: ' + totalCredit.toFixed(2));
+
+                    // Write file
+                    XLSX.writeFile(wb, filename);
+
+                    console.log('File downloaded successfully:', filename);
+                    toastr.success('Excel file with ' + data.length + ' records and correct totals downloaded successfully!');
+
+                } catch (error) {
+                    console.error('Error creating Excel:', error);
+                    toastr.error('Error: ' + error.message);
+                }
+            }
+
+            // --- Load Journal Function ---
+            function loadJournal(selectionMethod, txnId, fDate, tDate) {
+
+                if ($.fn.DataTable.isDataTable("#table1")) {
+                    $("#table1").DataTable().destroy();
+                    $('#table1 tbody').empty();
+                }
+
+                $('#table1').DataTable({
+                    processing: true,
+                    serverSide: true,
+                    ordering: false,
+                    ajax: {
+                        url: '@Url.Action("GetJournal", "Lists")',
+                        type: 'GET',
+                        data: function (d) {
+                            d.selectionMethod = selectionMethod || 'Default';
+                            d.transactionId = txnId ? parseInt(txnId) : null;
+                            if (fDate && tDate) {
+                                d.filterByDate = true;
+                                d.fromDate = fDate;
+                                d.toDate = tDate;
+                            } else {
+                                d.filterByDate = false;
+                            }
+                            d.searchValue = (d.search && d.search.value) ? d.search.value : '';
+                        },
+                        dataSrc: function (json) {
+                            // Store total debit and credit from server (which should be all filtered records)
+                            window._journalTotals = {
+                                debit: json.totalDebit || 0,
+                                credit: json.totalCredit || 0
+                            };
+                            console.log('DataTable loaded - Server totals: Debit=' + (json.totalDebit || 0) + ', Credit=' + (json.totalCredit || 0));
+                            return json.data;
+                        }
+                    },
+                    columns: [
+                        { data: 'SN' },
+                        { data: 'RefId', defaultContent: '' },
+                        { data: 'Date', render: d => d ? new Date(d).toLocaleDateString('en-GB') : '' },
+                        { data: 'Type', defaultContent: '' },
+                        { data: 'ACCode', defaultContent: '' },
+                        { data: 'ACName', defaultContent: '' },
+                        { data: 'Debit', className: 'text-end', render: d => d != null ? parseFloat(d).toFixed(2) : '0.00' },
+                        { data: 'Credit', className: 'text-end', render: d => d != null ? parseFloat(d).toFixed(2) : '0.00' },
+                        { data: 'CostCenterName', defaultContent: '-' }
+                    ],
+                    pageLength: 15,
+                    lengthMenu: [[10, 15, 25, 50, 100], [10, 15, 25, 50, 100]],
+                    dom: 'frtip',
+                    responsive: true,
+                    drawCallback: function () {
+                        const t = window._journalTotals || { debit: 0, credit: 0 };
+                        $('#footDebit').text(parseFloat(t.debit || 0).toFixed(2));
+                        $('#footCredit').text(parseFloat(t.credit || 0).toFixed(2));
+                        console.log('Footer updated - Debit=' + parseFloat(t.debit || 0).toFixed(2) + ', Credit=' + parseFloat(t.credit || 0).toFixed(2));
+                    },
+                    language: {
+                        search: "Search:",
+                        lengthMenu: "Show _MENU_ entries",
+                        info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                        infoEmpty: "Showing 0 to 0 of 0 entries",
+                        paginate: { first: "First", last: "Last", next: "Next", previous: "Previous" }
+                    }
+                });
+            }
+
+            // Row click - navigate to General Journal
+            $(document).on('click', '#table1 tbody tr', function () {
+                const row = $(this).find('td');
+                const refId = row.eq(1).text().trim();
+                const vType = row.eq(3).text().trim();
+                const date = row.eq(2).text().trim();
+
+                if (refId && vType && date) {
+                    const params = new URLSearchParams({
+                        refId: refId,
+                        vType: vType,
+                        date: date
+                    });
+                    window.location.href = '@Url.Action("GeneralJournal", "Lists")' + '?' + params.toString();
                 }
             });
-        }
-
-                    // Inside loadJournal success after DataTable initialization:
-        $('#table1 tbody').on('click', 'tr', function () {
-            const row = $(this).find('td');
-            const refId = row.eq(1).text().trim();   
-            const vType = row.eq(3).text().trim();   
-            const date = row.eq(2).text().trim();   
-        
-            if (refId && vType && date) {
-                const params = new URLSearchParams({
-                    refId: refId,
-                    vType: vType,
-                    date: date
-                });
-        window.location.href = '@Url.Action("GeneralJournal", "Lists")' + '?' + params.toString();
-            }
-        });
-
 
         });
     </script>

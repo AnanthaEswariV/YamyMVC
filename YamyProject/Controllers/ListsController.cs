@@ -4263,16 +4263,16 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
 
         [HttpGet]
         public async Task<IActionResult> GetJournal(
-    [FromQuery] string? selectionMethod = "Default",
-    [FromQuery] string? type = null,
-    [FromQuery] int? transactionId = null,
-    [FromQuery] bool filterByDate = false,
-    [FromQuery] DateTime? fromDate = null,
-    [FromQuery] DateTime? toDate = null,
-    [FromQuery] int draw = 1,
-    [FromQuery] int start = 0,
-    [FromQuery] int length = 25,
-    [FromQuery] string? searchValue = null)
+      [FromQuery] string? selectionMethod = "Default",
+      [FromQuery] string? type = null,
+      [FromQuery] int? transactionId = null,
+      [FromQuery] bool filterByDate = false,
+      [FromQuery] DateTime? fromDate = null,
+      [FromQuery] DateTime? toDate = null,
+      [FromQuery] int draw = 1,
+      [FromQuery] int start = 0,
+      [FromQuery] int length = 25,
+      [FromQuery] string? searchValue = null)
         {
             try
             {
@@ -4299,23 +4299,23 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 else if (!string.IsNullOrEmpty(type))
                 {
                     query = @"
-                SELECT 
-                    t.transaction_id AS TransactionId,
-                    CONCAT('000', t.transaction_id) AS RefId,
-                    t.transaction_id,
-                    t.type AS Type,
-                    c.code AS ACCode,
-                    c.name AS ACName,
-                    t.description AS Description,
-                    t.debit AS Debit,
-                    t.credit AS Credit,
-                    t.costcenter AS CostCenter,
-                    NULL AS CostCenterName,
-                    t.date AS Date
-                FROM tbl_transaction t
-                INNER JOIN tbl_coa_level_4 c ON t.account_id = c.id
-                INNER JOIN tbl_customer h ON t.hum_id = h.id
-                WHERE t.type = @type";
+        SELECT 
+            t.transaction_id AS TransactionId,
+            CONCAT('000', t.transaction_id) AS RefId,
+            t.transaction_id,
+            t.type AS Type,
+            c.code AS ACCode,
+            c.name AS ACName,
+            t.description AS Description,
+            t.debit AS Debit,
+            t.credit AS Credit,
+            t.costcenter AS CostCenter,
+            NULL AS CostCenterName,
+            t.date AS Date
+        FROM tbl_transaction t
+        INNER JOIN tbl_coa_level_4 c ON t.account_id = c.id
+        INNER JOIN tbl_customer h ON t.hum_id = h.id
+        WHERE t.type = @type";
                     parameters.Add(new MySqlParameter("@type", type));
                 }
                 else
@@ -4328,280 +4328,280 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 if (selectionMethod == "Sales Invoice")
                 {
                     query = @"SELECT 
-                CONCAT('000', transaction_id) AS RefId,
-                tbl_transaction.date AS Date, 
-                tbl_transaction.transaction_id,
-                tbl_transaction.type AS Type,
-                tbl_coa_level_4.code AS ACCode,
-                tbl_coa_level_4.name AS ACName, 
-                tbl_transaction.description AS Description,
-                tbl_transaction.debit AS Debit, 
-                tbl_transaction.credit AS Credit,
-                tbl_transaction.costcenter AS CostCenter,
-                tbl_sub_cost_center.name AS CostCenterName
-            FROM tbl_transaction 
-            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id 
-            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
-            WHERE (tbl_transaction.type = 'Sales Invoice Cash' OR tbl_transaction.type = 'Sales Invoice') 
-                AND tbl_transaction.state = 0";
+        CONCAT('000', transaction_id) AS RefId,
+        tbl_transaction.date AS Date, 
+        tbl_transaction.transaction_id,
+        tbl_transaction.type AS Type,
+        tbl_coa_level_4.code AS ACCode,
+        tbl_coa_level_4.name AS ACName, 
+        tbl_transaction.description AS Description,
+        tbl_transaction.debit AS Debit, 
+        tbl_transaction.credit AS Credit,
+        tbl_transaction.costcenter AS CostCenter,
+        tbl_sub_cost_center.name AS CostCenterName
+    FROM tbl_transaction 
+    INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id 
+    LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
+    WHERE (tbl_transaction.type = 'Sales Invoice Cash' OR tbl_transaction.type = 'Sales Invoice') 
+        AND tbl_transaction.state = 0";
                 }
                 else if (selectionMethod == "Purchase Invoice")
                 {
                     query = @"SELECT 
-                CONCAT('000', transaction_id) AS RefId,
-                tbl_transaction.date AS Date, 
-                tbl_transaction.transaction_id,
-                tbl_transaction.type AS Type,
-                tbl_coa_level_4.code AS ACCode,
-                tbl_coa_level_4.name AS ACName, 
-                tbl_transaction.description AS Description,
-                tbl_transaction.debit AS Debit, 
-                tbl_transaction.credit AS Credit,
-                tbl_transaction.costcenter AS CostCenter,
-                tbl_sub_cost_center.name AS CostCenterName
-            FROM tbl_transaction 
-            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id 
-            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
-            WHERE (tbl_transaction.type = 'Purchase Invoice Cash' OR tbl_transaction.type = 'Purchase Invoice') 
-                AND tbl_transaction.state = 0";
+        CONCAT('000', transaction_id) AS RefId,
+        tbl_transaction.date AS Date, 
+        tbl_transaction.transaction_id,
+        tbl_transaction.type AS Type,
+        tbl_coa_level_4.code AS ACCode,
+        tbl_coa_level_4.name AS ACName, 
+        tbl_transaction.description AS Description,
+        tbl_transaction.debit AS Debit, 
+        tbl_transaction.credit AS Credit,
+        tbl_transaction.costcenter AS CostCenter,
+        tbl_sub_cost_center.name AS CostCenterName
+    FROM tbl_transaction 
+    INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id 
+    LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
+    WHERE (tbl_transaction.type = 'Purchase Invoice Cash' OR tbl_transaction.type = 'Purchase Invoice') 
+        AND tbl_transaction.state = 0";
                 }
                 else if (type?.ToLower() == "sales")
                 {
                     query = @"SELECT 
-                CONCAT('000', transaction_id) AS RefId,
-                tbl_transaction.date AS Date, 
-                tbl_transaction.transaction_id,
-                tbl_transaction.type AS Type,  
-                tbl_coa_level_4.code AS ACCode, 
-                tbl_coa_level_4.name AS ACName, 
-                tbl_transaction.description AS Description, 
-                tbl_transaction.debit AS Debit, 
-                tbl_transaction.credit AS Credit, 
-                tbl_transaction.costcenter AS CostCenter,
-                tbl_sub_cost_center.name AS CostCenterName,
-                tbl_customer.name AS Partner
-            FROM tbl_transaction  
-            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id 
-            INNER JOIN tbl_sales ON tbl_transaction.transaction_id = tbl_sales.id 
-            INNER JOIN tbl_customer ON tbl_sales.customer_id = tbl_customer.id 
-            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
-            WHERE transaction_id = @id AND tbl_transaction.t_type = 'SALES'";
+        CONCAT('000', transaction_id) AS RefId,
+        tbl_transaction.date AS Date, 
+        tbl_transaction.transaction_id,
+        tbl_transaction.type AS Type,  
+        tbl_coa_level_4.code AS ACCode, 
+        tbl_coa_level_4.name AS ACName, 
+        tbl_transaction.description AS Description, 
+        tbl_transaction.debit AS Debit, 
+        tbl_transaction.credit AS Credit, 
+        tbl_transaction.costcenter AS CostCenter,
+        tbl_sub_cost_center.name AS CostCenterName,
+        tbl_customer.name AS Partner
+    FROM tbl_transaction  
+    INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id 
+    INNER JOIN tbl_sales ON tbl_transaction.transaction_id = tbl_sales.id 
+    INNER JOIN tbl_customer ON tbl_sales.customer_id = tbl_customer.id 
+    LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
+    WHERE transaction_id = @id AND tbl_transaction.t_type = 'SALES'";
                 }
                 else if (type?.ToLower() == "purchase")
                 {
                     query = @"SELECT 
-                CONCAT('000', transaction_id) AS RefId,
-                tbl_transaction.date AS Date, 
-                tbl_transaction.transaction_id,
-                tbl_transaction.type AS Type,  
-                tbl_coa_level_4.code AS ACCode, 
-                tbl_coa_level_4.name AS ACName, 
-                tbl_transaction.description AS Description, 
-                tbl_transaction.debit AS Debit, 
-                tbl_transaction.credit AS Credit, 
-                tbl_transaction.costcenter AS CostCenter,
-                tbl_sub_cost_center.name AS CostCenterName,
-                tbl_vendor.name AS Partner
-            FROM tbl_transaction
-            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
-            INNER JOIN tbl_purchase ON tbl_transaction.transaction_id = tbl_purchase.id
-            INNER JOIN tbl_vendor ON tbl_purchase.vendor_id = tbl_vendor.id
-            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
-            WHERE transaction_id = @id AND t_type = 'PURCHASE'";
+        CONCAT('000', transaction_id) AS RefId,
+        tbl_transaction.date AS Date, 
+        tbl_transaction.transaction_id,
+        tbl_transaction.type AS Type,  
+        tbl_coa_level_4.code AS ACCode, 
+        tbl_coa_level_4.name AS ACName, 
+        tbl_transaction.description AS Description, 
+        tbl_transaction.debit AS Debit, 
+        tbl_transaction.credit AS Credit, 
+        tbl_transaction.costcenter AS CostCenter,
+        tbl_sub_cost_center.name AS CostCenterName,
+        tbl_vendor.name AS Partner
+    FROM tbl_transaction
+    INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
+    INNER JOIN tbl_purchase ON tbl_transaction.transaction_id = tbl_purchase.id
+    INNER JOIN tbl_vendor ON tbl_purchase.vendor_id = tbl_vendor.id
+    LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
+    WHERE transaction_id = @id AND t_type = 'PURCHASE'";
                 }
                 else if (type?.ToLower() == "purchase return")
                 {
                     query = @"SELECT 
-                CONCAT('000', transaction_id) AS RefId,
-                tbl_transaction.date AS Date, 
-                tbl_transaction.transaction_id,
-                tbl_transaction.type AS Type,  
-                tbl_coa_level_4.code AS ACCode, 
-                tbl_coa_level_4.name AS ACName, 
-                tbl_transaction.description AS Description, 
-                tbl_transaction.debit AS Debit, 
-                tbl_transaction.credit AS Credit,
-                tbl_transaction.costcenter AS CostCenter,
-                tbl_sub_cost_center.name AS CostCenterName,
-                tbl_vendor.name AS Partner
-            FROM tbl_transaction
-            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
-            INNER JOIN tbl_purchase_return ON tbl_transaction.transaction_id = tbl_purchase_return.id
-            INNER JOIN tbl_vendor ON tbl_purchase_return.vendor_id = tbl_vendor.id
-            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
-            WHERE transaction_id = @id AND t_type = 'PURCHASE RETURN'";
+        CONCAT('000', transaction_id) AS RefId,
+        tbl_transaction.date AS Date, 
+        tbl_transaction.transaction_id,
+        tbl_transaction.type AS Type,  
+        tbl_coa_level_4.code AS ACCode, 
+        tbl_coa_level_4.name AS ACName, 
+        tbl_transaction.description AS Description, 
+        tbl_transaction.debit AS Debit, 
+        tbl_transaction.credit AS Credit,
+        tbl_transaction.costcenter AS CostCenter,
+        tbl_sub_cost_center.name AS CostCenterName,
+        tbl_vendor.name AS Partner
+    FROM tbl_transaction
+    INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
+    INNER JOIN tbl_purchase_return ON tbl_transaction.transaction_id = tbl_purchase_return.id
+    INNER JOIN tbl_vendor ON tbl_purchase_return.vendor_id = tbl_vendor.id
+    LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
+    WHERE transaction_id = @id AND t_type = 'PURCHASE RETURN'";
                 }
                 else if (type?.ToLower() == "payment")
                 {
                     query = @"SELECT 
-                CONCAT('000', transaction_id) AS RefId,
-                tbl_transaction.date AS Date, 
-                tbl_transaction.transaction_id,
-                tbl_transaction.type AS Type,  
-                tbl_coa_level_4.code AS ACCode, 
-                tbl_coa_level_4.name AS ACName, 
-                tbl_transaction.description AS Description, 
-                tbl_transaction.debit AS Debit, 
-                tbl_transaction.credit AS Credit,
-                tbl_transaction.costcenter AS CostCenter,
-                tbl_sub_cost_center.name AS CostCenterName,
-                CASE 
-                    WHEN tbl_payment_voucher.type = 'Vendor' THEN (
-                        SELECT name FROM tbl_vendor
-                        WHERE id = (SELECT hum_id FROM tbl_payment_voucher_details
-                                    WHERE payment_id = tbl_payment_voucher.id))
-                    WHEN tbl_payment_voucher.type = 'Employee' THEN (
-                        SELECT name FROM tbl_employee
-                        WHERE id = (SELECT hum_id FROM tbl_payment_voucher_details
-                                    WHERE payment_id = tbl_payment_voucher.id))
-                    WHEN tbl_payment_voucher.type = 'General' THEN (
-                        SELECT name FROM tbl_coa_level_4
-                        WHERE id = (SELECT hum_id FROM tbl_payment_voucher_details
-                                    WHERE payment_id = tbl_payment_voucher.id))
-                    ELSE '' 
-                END AS Partner
-            FROM tbl_transaction
-            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
-            INNER JOIN tbl_payment_voucher ON tbl_transaction.transaction_id = tbl_payment_voucher.id
-            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
-            WHERE transaction_id = @id AND t_type = 'PAYMENT'";
+        CONCAT('000', transaction_id) AS RefId,
+        tbl_transaction.date AS Date, 
+        tbl_transaction.transaction_id,
+        tbl_transaction.type AS Type,  
+        tbl_coa_level_4.code AS ACCode, 
+        tbl_coa_level_4.name AS ACName, 
+        tbl_transaction.description AS Description, 
+        tbl_transaction.debit AS Debit, 
+        tbl_transaction.credit AS Credit,
+        tbl_transaction.costcenter AS CostCenter,
+        tbl_sub_cost_center.name AS CostCenterName,
+        CASE 
+            WHEN tbl_payment_voucher.type = 'Vendor' THEN (
+                SELECT name FROM tbl_vendor
+                WHERE id = (SELECT hum_id FROM tbl_payment_voucher_details
+                            WHERE payment_id = tbl_payment_voucher.id))
+            WHEN tbl_payment_voucher.type = 'Employee' THEN (
+                SELECT name FROM tbl_employee
+                WHERE id = (SELECT hum_id FROM tbl_payment_voucher_details
+                            WHERE payment_id = tbl_payment_voucher.id))
+            WHEN tbl_payment_voucher.type = 'General' THEN (
+                SELECT name FROM tbl_coa_level_4
+                WHERE id = (SELECT hum_id FROM tbl_payment_voucher_details
+                            WHERE payment_id = tbl_payment_voucher.id))
+            ELSE '' 
+        END AS Partner
+    FROM tbl_transaction
+    INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
+    INNER JOIN tbl_payment_voucher ON tbl_transaction.transaction_id = tbl_payment_voucher.id
+    LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
+    WHERE transaction_id = @id AND t_type = 'PAYMENT'";
                 }
                 else if (type?.ToLower() == "receipt")
                 {
                     query = @"SELECT 
-                CONCAT('000', transaction_id) AS RefId,
-                tbl_transaction.date AS Date, 
-                tbl_transaction.transaction_id,
-                tbl_transaction.type AS Type,  
-                tbl_coa_level_4.code AS ACCode, 
-                tbl_coa_level_4.name AS ACName, 
-                tbl_transaction.description AS Description, 
-                tbl_transaction.debit AS Debit, 
-                tbl_transaction.credit AS Credit, 
-                tbl_transaction.costcenter AS CostCenter,
-                tbl_sub_cost_center.name AS CostCenterName,
-                CASE 
-                    WHEN tbl_receipt_voucher.type = 'Customer' THEN (
-                        SELECT name FROM tbl_customer
-                        WHERE id = (SELECT hum_id FROM tbl_receipt_voucher_details
-                                    WHERE payment_id = tbl_receipt_voucher.id LIMIT 1))
-                    WHEN tbl_receipt_voucher.type = 'General' THEN (
-                        SELECT name FROM tbl_coa_level_4
-                        WHERE id = (SELECT hum_id FROM tbl_receipt_voucher_details
-                                    WHERE payment_id = tbl_receipt_voucher.id))
-                    ELSE '' 
-                END AS Partner
-            FROM tbl_transaction
-            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
-            INNER JOIN tbl_receipt_voucher ON tbl_transaction.transaction_id = tbl_receipt_voucher.id
-            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
-            WHERE transaction_id = @id AND t_type = 'RECEIPT'";
+        CONCAT('000', transaction_id) AS RefId,
+        tbl_transaction.date AS Date, 
+        tbl_transaction.transaction_id,
+        tbl_transaction.type AS Type,  
+        tbl_coa_level_4.code AS ACCode, 
+        tbl_coa_level_4.name AS ACName, 
+        tbl_transaction.description AS Description, 
+        tbl_transaction.debit AS Debit, 
+        tbl_transaction.credit AS Credit, 
+        tbl_transaction.costcenter AS CostCenter,
+        tbl_sub_cost_center.name AS CostCenterName,
+        CASE 
+            WHEN tbl_receipt_voucher.type = 'Customer' THEN (
+                SELECT name FROM tbl_customer
+                WHERE id = (SELECT hum_id FROM tbl_receipt_voucher_details
+                            WHERE payment_id = tbl_receipt_voucher.id LIMIT 1))
+            WHEN tbl_receipt_voucher.type = 'General' THEN (
+                SELECT name FROM tbl_coa_level_4
+                WHERE id = (SELECT hum_id FROM tbl_receipt_voucher_details
+                            WHERE payment_id = tbl_receipt_voucher.id))
+            ELSE '' 
+        END AS Partner
+    FROM tbl_transaction
+    INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
+    INNER JOIN tbl_receipt_voucher ON tbl_transaction.transaction_id = tbl_receipt_voucher.id
+    LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
+    WHERE transaction_id = @id AND t_type = 'RECEIPT'";
                 }
                 else if (type?.ToLower() == "journal")
                 {
                     query = @"SELECT 
-                CONCAT('000', transaction_id) AS RefId,
-                tbl_transaction.date AS Date, 
-                tbl_transaction.transaction_id,
-                tbl_transaction.type AS Type, 
-                tbl_coa_level_4.code AS ACCode, 
-                tbl_coa_level_4.name AS ACName, 
-                tbl_transaction.description AS Description, 
-                tbl_transaction.debit AS Debit, 
-                tbl_transaction.credit AS Credit, 
-                tbl_transaction.costcenter AS CostCenter,
-                tbl_sub_cost_center.name AS CostCenterName,
-                (SELECT partner FROM tbl_journal_voucher_details
-                 WHERE inv_id = tbl_journal_voucher.id LIMIT 1) AS Partner
-            FROM tbl_transaction
-            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
-            INNER JOIN tbl_journal_voucher ON tbl_transaction.transaction_id = tbl_journal_voucher.id
-            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
-            WHERE transaction_id = @id AND t_type = 'JOURNAL'";
+        CONCAT('000', transaction_id) AS RefId,
+        tbl_transaction.date AS Date, 
+        tbl_transaction.transaction_id,
+        tbl_transaction.type AS Type, 
+        tbl_coa_level_4.code AS ACCode, 
+        tbl_coa_level_4.name AS ACName, 
+        tbl_transaction.description AS Description, 
+        tbl_transaction.debit AS Debit, 
+        tbl_transaction.credit AS Credit, 
+        tbl_transaction.costcenter AS CostCenter,
+        tbl_sub_cost_center.name AS CostCenterName,
+        (SELECT partner FROM tbl_journal_voucher_details
+         WHERE inv_id = tbl_journal_voucher.id LIMIT 1) AS Partner
+    FROM tbl_transaction
+    INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
+    INNER JOIN tbl_journal_voucher ON tbl_transaction.transaction_id = tbl_journal_voucher.id
+    LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
+    WHERE transaction_id = @id AND t_type = 'JOURNAL'";
                 }
                 else if (type?.ToLower() == "inventory")
                 {
                     query = @"SELECT 
-                CONCAT('000', transaction_id) AS RefId,
-                tbl_transaction.date AS Date, 
-                tbl_transaction.transaction_id,
-                tbl_transaction.type AS Type,
-                tbl_coa_level_4.code AS ACCode,
-                tbl_coa_level_4.name AS ACName, 
-                tbl_transaction.description AS Description,
-                tbl_transaction.debit AS Debit, 
-                tbl_transaction.credit AS Credit,
-                tbl_transaction.costcenter AS CostCenter,
-                tbl_sub_cost_center.name AS CostCenterName
-            FROM tbl_transaction 
-            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id 
-            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
-            WHERE description LIKE @itemCode";
+        CONCAT('000', transaction_id) AS RefId,
+        tbl_transaction.date AS Date, 
+        tbl_transaction.transaction_id,
+        tbl_transaction.type AS Type,
+        tbl_coa_level_4.code AS ACCode,
+        tbl_coa_level_4.name AS ACName, 
+        tbl_transaction.description AS Description,
+        tbl_transaction.debit AS Debit, 
+        tbl_transaction.credit AS Credit,
+        tbl_transaction.costcenter AS CostCenter,
+        tbl_sub_cost_center.name AS CostCenterName
+    FROM tbl_transaction 
+    INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id 
+    LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
+    WHERE description LIKE @itemCode";
                     parameters.Add(new MySqlParameter("@itemCode", $"%- Item Code - {transactionId}"));
                 }
                 else if (type?.ToLower() == "vat input" || type?.ToLower() == "vat output")
                 {
                     query = @"SELECT 
-                CONCAT('000', transaction_id) AS RefId,
-                tbl_transaction.date AS Date, 
-                tbl_transaction.transaction_id,
-                tbl_transaction.type AS Type,
-                tbl_coa_level_4.code AS ACCode,
-                tbl_coa_level_4.name AS ACName, 
-                tbl_transaction.description AS Description,
-                tbl_transaction.debit AS Debit, 
-                tbl_transaction.credit AS Credit,
-                tbl_transaction.costcenter AS CostCenter,
-                tbl_sub_cost_center.name AS CostCenterName
-            FROM tbl_transaction 
-            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
-            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
-            WHERE 1=1 " + condition + @" 
-                AND tbl_transaction.account_id = (
-                    SELECT account_id FROM tbl_coa_config WHERE category = @vatType)";
+        CONCAT('000', transaction_id) AS RefId,
+        tbl_transaction.date AS Date, 
+        tbl_transaction.transaction_id,
+        tbl_transaction.type AS Type,
+        tbl_coa_level_4.code AS ACCode,
+        tbl_coa_level_4.name AS ACName, 
+        tbl_transaction.description AS Description,
+        tbl_transaction.debit AS Debit, 
+        tbl_transaction.credit AS Credit,
+        tbl_transaction.costcenter AS CostCenter,
+        tbl_sub_cost_center.name AS CostCenterName
+    FROM tbl_transaction 
+    INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
+    LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
+    WHERE 1=1 " + condition + @" 
+        AND tbl_transaction.account_id = (
+            SELECT account_id FROM tbl_coa_config WHERE category = @vatType)";
                     parameters.Add(new MySqlParameter("@vatType", type));
                 }
                 else if (new[] { "Sales All", "Purchase All", "Purchase Return All", "Sales Return All",
-                 "Debit Note All", "Credit Note All", "Petty Cash All" }
+         "Debit Note All", "Credit Note All", "Petty Cash All" }
                          .Contains(type, StringComparer.OrdinalIgnoreCase))
                 {
                     string typePrefix = type!.Replace(" All", "");
                     query = @"SELECT 
-                CONCAT('000', transaction_id) AS RefId,
-                tbl_transaction.date AS Date, 
-                tbl_transaction.transaction_id,
-                tbl_transaction.type AS Type,
-                tbl_coa_level_4.code AS ACCode,
-                tbl_coa_level_4.name AS ACName, 
-                tbl_transaction.description AS Description,
-                tbl_transaction.debit AS Debit, 
-                tbl_transaction.credit AS Credit,
-                tbl_transaction.costcenter AS CostCenter,
-                tbl_sub_cost_center.name AS CostCenterName
-            FROM tbl_transaction 
-            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id 
-            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
-            WHERE 1=1 " + condition + " AND tbl_transaction.type LIKE @typePattern";
+        CONCAT('000', transaction_id) AS RefId,
+        tbl_transaction.date AS Date, 
+        tbl_transaction.transaction_id,
+        tbl_transaction.type AS Type,
+        tbl_coa_level_4.code AS ACCode,
+        tbl_coa_level_4.name AS ACName, 
+        tbl_transaction.description AS Description,
+        tbl_transaction.debit AS Debit, 
+        tbl_transaction.credit AS Credit,
+        tbl_transaction.costcenter AS CostCenter,
+        tbl_sub_cost_center.name AS CostCenterName
+    FROM tbl_transaction 
+    INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id 
+    LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
+    WHERE 1=1 " + condition + " AND tbl_transaction.type LIKE @typePattern";
                     parameters.Add(new MySqlParameter("@typePattern", $"{typePrefix}%"));
                 }
                 else if (string.IsNullOrEmpty(query)) // default / General Ledger / etc.
                 {
                     query = @"SELECT 
-                CONCAT('000', tbl_transaction.transaction_id) AS RefId,
-                tbl_transaction.date AS Date,
-                tbl_transaction.transaction_id,
-                tbl_transaction.type AS Type,
-                tbl_coa_level_4.code AS ACCode,
-                tbl_coa_level_4.name AS ACName,
-                tbl_transaction.description AS Description,
-                tbl_transaction.debit AS Debit,
-                tbl_transaction.credit AS Credit,
-                tbl_transaction.costcenter AS CostCenter,
-                tbl_sub_cost_center.name AS CostCenterName
-            FROM tbl_transaction
-            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
-            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
-            WHERE 1=1 " + condition;
+        CONCAT('000', tbl_transaction.transaction_id) AS RefId,
+        tbl_transaction.date AS Date,
+        tbl_transaction.transaction_id,
+        tbl_transaction.type AS Type,
+        tbl_coa_level_4.code AS ACCode,
+        tbl_coa_level_4.name AS ACName,
+        tbl_transaction.description AS Description,
+        tbl_transaction.debit AS Debit,
+        tbl_transaction.credit AS Credit,
+        tbl_transaction.costcenter AS CostCenter,
+        tbl_sub_cost_center.name AS CostCenterName
+    FROM tbl_transaction
+    INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
+    LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
+    WHERE 1=1 " + condition;
                 }
 
                 // Only add @id if the chosen query actually uses it (avoids duplicate / unused param issues)
@@ -4631,7 +4631,15 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
 
                 string countSql = $"SELECT COUNT(*) FROM ({innerQuery}) AS paged{outerWhere}";
                 string totalsSql = $"SELECT COALESCE(SUM(paged.Debit),0), COALESCE(SUM(paged.Credit),0) FROM ({innerQuery}) AS paged{outerWhere}";
-                string dataSql = $"SELECT * FROM ({innerQuery}) AS paged{outerWhere} ORDER BY paged.Date LIMIT {pageLength} OFFSET {pageStart}";
+
+                // ===== FIX: deterministic ORDER BY so batched export pages don't overlap/skip rows =====
+                // Previously: ORDER BY paged.Date  -> rows with the same date had an unstable order,
+                // causing duplicates/gaps across export batches, which made the Excel autosum differ
+                // from the server TOTAL. Adding unique tiebreakers makes paging stable.
+                string dataSql = $"SELECT * FROM ({innerQuery}) AS paged{outerWhere} " +
+                                 "ORDER BY paged.Date, paged.transaction_id, paged.ACCode, paged.ACName, " +
+                                 "paged.Debit, paged.Credit, paged.Type, paged.Description, paged.CostCenter " +
+                                 $"LIMIT {pageLength} OFFSET {pageStart}";
 
                 // A MySqlParameter can belong to only one command, so clone per command
                 MySqlParameter[] CloneParams() =>
