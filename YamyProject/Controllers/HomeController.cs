@@ -53,15 +53,15 @@
             // TOTAL INCOME
             // ==========================
             const string incomeQ = @"
-    SELECT IFNULL(SUM(t.credit) - SUM(t.debit),0)
-    FROM tbl_transaction t
-    INNER JOIN tbl_coa_level_4 l4 ON t.account_id = l4.id
-    INNER JOIN tbl_coa_level_3 l3 ON l4.main_id = l3.id
-    INNER JOIN tbl_coa_level_2 l2 ON l3.main_id = l2.id
-    INNER JOIN tbl_coa_level_1 l1 ON l2.main_id = l1.id
-    WHERE l1.category_code IN ('ASSET','INCOME')
-      AND t.date BETWEEN @ys AND @ye
-      AND (t.state = 0 OR t.state IS NULL)";
+   SELECT IFNULL(SUM(t.credit - t.debit),0)
+FROM tbl_transaction t
+INNER JOIN tbl_coa_level_4 l4 ON t.account_id = l4.id
+INNER JOIN tbl_coa_level_3 l3 ON l4.main_id = l3.id
+INNER JOIN tbl_coa_level_2 l2 ON l3.main_id = l2.id
+INNER JOIN tbl_coa_level_1 l1 ON l2.main_id = l1.id
+WHERE l1.category_code = 'INCOME'
+  AND t.date BETWEEN @ys AND @ye
+  AND (t.state = 0 OR t.state IS NULL)";
 
             using (var cmd = new MySqlCommand(incomeQ, conn))
             {
@@ -78,15 +78,15 @@
             // TOTAL EXPENSE
             // ==========================
             const string expenseQ = @"
-    SELECT IFNULL(SUM(t.debit) - SUM(t.credit),0)
-    FROM tbl_transaction t
-    INNER JOIN tbl_coa_level_4 l4 ON t.account_id = l4.id
-    INNER JOIN tbl_coa_level_3 l3 ON l4.main_id = l3.id
-    INNER JOIN tbl_coa_level_2 l2 ON l3.main_id = l2.id
-    INNER JOIN tbl_coa_level_1 l1 ON l2.main_id = l1.id
-    WHERE l1.category_code IN ('EXPENSE','COST')
-      AND t.date BETWEEN @ys AND @ye
-      AND (t.state = 0 OR t.state IS NULL)";
+    SELECT IFNULL(SUM(t.debit - t.credit),0)
+FROM tbl_transaction t
+INNER JOIN tbl_coa_level_4 l4 ON t.account_id = l4.id
+INNER JOIN tbl_coa_level_3 l3 ON l4.main_id = l3.id
+INNER JOIN tbl_coa_level_2 l2 ON l3.main_id = l2.id
+INNER JOIN tbl_coa_level_1 l1 ON l2.main_id = l1.id
+WHERE l1.category_code IN ('EXPENSE','COST')
+  AND t.date BETWEEN @ys AND @ye
+  AND (t.state = 0 OR t.state IS NULL)";
 
             using (var cmd = new MySqlCommand(expenseQ, conn))
             {
