@@ -855,6 +855,7 @@ namespace YamyProject.Controllers
             return await GetPurchasesByVendorType(
                 "Vendor", dateFrom, dateTo, customerId, paymentMethod, selectionMethod, page, pageSize);
         }
+
         private async Task<IActionResult> GetPurchasesByVendorType(
       string vendorType,
       DateTime? dateFrom,
