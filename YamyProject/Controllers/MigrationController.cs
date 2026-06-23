@@ -36,7 +36,7 @@ namespace YamyProject.Controllers
         private readonly Dictionary<string, int> _accountByName = new();
         private readonly Dictionary<string, int> _accountByBank = new();
 
-        private readonly string _paymentType = "Customer";
+        private readonly string _paymentType = "General Voucher";
         private int _arAccountId;        // default Customer A/R (coa_config "Customer")
         private int _cashAccountId;      // fallback bank/cash account if a name doesn't resolve
         private int _userId;
@@ -2072,7 +2072,7 @@ namespace YamyProject.Controllers
                 {
                     Date = date,
                     Sn = sn,
-                    Customer = r.Cell("D").GetString().Trim(),
+                    Customer = r.Cell("E").GetString().Trim(),
                     Description = r.Cell("F").GetString().Trim(),
                     Account = r.Cell("G").GetString().Trim(),
                     ChequeNo = r.Cell("H").GetString().Trim(),
