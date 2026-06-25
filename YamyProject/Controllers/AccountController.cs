@@ -417,6 +417,7 @@ namespace YamyProject.Controllers
                           `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `category_id` int DEFAULT NULL,
                           `subcategory_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                            `image` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `meal_times` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `price` decimal(20,6) DEFAULT NULL,
                           `is_active` tinyint(1) DEFAULT '1',
