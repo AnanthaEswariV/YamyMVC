@@ -41,7 +41,10 @@
     {
         public int Id { get; set; }
 
-        public int TableId { get; set; }
+        public int? TableId { get; set; }
+        public string OrderType { get; set; }
+
+        public int? CustomerId { get; set; }
 
         public string? CustomerName { get; set; }
 

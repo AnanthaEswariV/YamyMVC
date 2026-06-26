@@ -452,6 +452,7 @@ namespace YamyProject.Controllers
                           `order_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `table_id` int DEFAULT NULL,
                           `customer_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `order_type` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `customer_mobile` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `total_amount` decimal(20,6) DEFAULT '0.000000',
                           `discount_amount` decimal(20,6) DEFAULT '0.000000',

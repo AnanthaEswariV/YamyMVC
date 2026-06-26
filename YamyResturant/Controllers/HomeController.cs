@@ -1,9 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
-using System.Diagnostics;
 using YamyRestaurant.Models;
-using YamyResturant.Models;
-using static Org.BouncyCastle.Math.EC.ECCurve;
+
 
 namespace YamyResturant.Controllers
 {
@@ -711,7 +709,8 @@ namespace YamyResturant.Controllers
                         (MySqlTransaction)transaction;
 
                     cmd.Parameters.AddWithValue("@orderNo", orderNo);
-                    cmd.Parameters.AddWithValue("@tableId", model.TableId);
+                    cmd.Parameters.AddWithValue("@orderType",model.OrderType);
+                    cmd.Parameters.AddWithValue( "@tableId", model.TableId ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@customerName", model.CustomerName);
                     cmd.Parameters.AddWithValue("@customerMobile", model.CustomerMobile);
                     cmd.Parameters.AddWithValue("@totalAmount", model.TotalAmount);

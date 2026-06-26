@@ -38,12 +38,20 @@
                     Order Cart
                 </div>
                 <div class="card-body">
-                    <!-- TABLE -->
+                    <!-- ORDER TYPE -->
                     <div class="mb-3">
+                        <label>Order Type</label>
+
+                        <select class="form-select" id="orderType">
+                            <option value="DineIn">Dine In</option>
+                            <option value="TakeAway">Takeaway / Parcel</option>
+                        </select>
+                    </div>
+                    <!-- TABLE -->
+                    <div class="mb-3" id="tableSection">
                         <label>Select Table</label>
 
-                        <select class="form-select"
-                                id="tableId">
+                        <select class="form-select" id="tableId">
                         </select>
                     </div>
                     <!-- CUSTOMER -->
@@ -138,6 +146,32 @@
 
         </div>
 
+    </div>
+
+    <div class="container my-3">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <strong>Order Management</strong>
+            </div>
+
+            <div class="card-body">
+                <table class="table table-striped align-middle"
+                       id="table1">
+                    <thead>
+                        <tr>
+                            <th>S.No</th>
+                            <th>Category</th>
+                            <th>Item Name</th>
+                            <th>Price</th>
+                            <th>QTY</th>
+                            <th>Payment Status</th>
+                            <th width="150">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
 </div>
@@ -352,13 +386,12 @@
 
             try {
 
-                if ($("#tableId").val() == "") {
+                      let orderType = $("#orderType").val();
 
-                    toastr.error("Please select table");
-
-                    return;
-                }
-
+        if (orderType === "DineIn" && $("#tableId").val() == "") {
+            toastr.error("Please select table");
+            return;
+        }
                 if (cart.length == 0) {
 
                     toastr.error("Cart is empty");
@@ -372,8 +405,14 @@
 
                 let model = {
 
-                    tableId:
-                        parseInt($("#tableId").val()),
+                            orderType: $("#orderType").val(),
+
+        tableId:
+            $("#orderType").val() === "DineIn"
+                ? parseInt($("#tableId").val())
+                : null,
+
+
 
                     customerId:
                         customerId,
