@@ -29,19 +29,29 @@
             <div class="card">
                 <div class="card-header">Order Cart</div>
                 <div class="card-body">
+                    <!-- ORDER TYPE BUTTONS -->
                     <div class="mb-3">
-                        <label>Order Type</label>
-                        <select class="form-select" id="orderType">
-                            <option value="TakeAway">Takeaway / Parcel</option>
-                            <option value="DineIn">Dine In</option>
-                        </select>
+                        <label class="form-label"><strong>Order Type</strong></label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="orderType" id="orderTypeDineIn" value="DineIn" checked>
+                            <label class="btn btn-outline-primary w-50" for="orderTypeDineIn">
+                                <i class="fas fa-utensils"></i> Dine In
+                            </label>
+
+                            <input type="radio" class="btn-check" name="orderType" id="orderTypeTakeaway" value="TakeAway">
+                            <label class="btn btn-outline-warning w-50" for="orderTypeTakeaway">
+                                <i class="fas fa-box"></i> Takeaway
+                            </label>
+                        </div>
                     </div>
 
-                    <div class="mb-3" id="tableSection" style="display: none;">
-                        <label>Select Table</label>
+                    <!-- TABLE SELECTION -->
+                    <div class="mb-3" id="tableSection">
+                        <label class="form-label"><strong>Select Table</strong></label>
                         <select class="form-select" id="tableId"></select>
                     </div>
 
+                    <!-- CUSTOMER INFO -->
                     <div class="card mb-3">
                         <div class="card-body">
                             <div class="mb-3">
@@ -61,6 +71,7 @@
                         </div>
                     </div>
 
+                    <!-- CART TABLE -->
                     <table class="table table-bordered table-sm">
                         <thead>
                             <tr>
@@ -73,6 +84,7 @@
                         <tbody id="cartBody"></tbody>
                     </table>
 
+                    <!-- GRAND TOTAL -->
                     <div class="mt-3">
                         <h5>Grand Total: <span id="grandTotal" class="text-primary fw-bold">0.00</span></h5>
                     </div>
@@ -326,7 +338,7 @@
                     let itemCount = order.items ? order.items.length : 0;
                     let statusBadge = `<span class="badge bg-${getStatusColor(order.orderStatus)}">${order.orderStatus}</span>`;
                     let paymentBadge = `<span class="badge bg-${getPaymentColor(order.paymentStatus)}">${order.paymentStatus}</span>`;
-                    let typeBadge = `<span class="badge bg-${order.orderType === 'DineIn' ? 'primary' : 'info'}">${order.orderType === 'DineIn' ? 'Dine In' : 'Takeaway'}</span>`;
+                    let typeBadge = `<span class="badge bg-${order.orderType === 'DineIn' ? 'primary' : 'info'}">${order.orderType === 'DineIn' ? '🍽️ Dine In' : '📦 Takeaway'}</span>`;
 
                     html += `
                     <tr>
@@ -339,13 +351,13 @@
                         <td>${statusBadge}</td>
                         <td>${paymentBadge}</td>
                         <td>
-                            <button class="btn btn-sm btn-success" onclick="printInvoice(${order.id})">
+                            <button class="btn btn-sm btn-success" onclick="printInvoice(${order.id})" title="Print Invoice">
                                 <i class="fas fa-file-invoice"></i>
                             </button>
-                            <button class="btn btn-sm btn-info" onclick="viewOrder(${order.id})">
+                            <button class="btn btn-sm btn-info" onclick="viewOrder(${order.id})" title="View Details">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteOrderFromTable(${order.id})">
+                            <button class="btn btn-sm btn-danger" onclick="deleteOrderFromTable(${order.id})" title="Delete Order">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>
@@ -443,7 +455,7 @@
         }
 
         // ==================== ORDER TYPE TOGGLE ====================
-        $("#orderType").change(function () {
+        $("input[name='orderType']").change(function () {
             let orderType = $(this).val();
             if (orderType === "DineIn") {
                 $("#tableSection").show();
@@ -463,7 +475,7 @@
         // ==================== SAVE ORDER ====================
         $("#saveOrderBtn").click(async function () {
             try {
-                let orderType = $("#orderType").val();
+                let orderType = $("input[name='orderType']:checked").val();
                 if (orderType === "DineIn" && $("#tableId").val() == "") {
                     toastr.error("Please select a table");
                     return;
@@ -502,6 +514,9 @@
                             $("#customerName").val("");
                             $("#customerMobile").val("");
                             $("#tableId").val("");
+                            // Reset to default (Dine In)
+                            $("#orderTypeDineIn").prop("checked", true);
+                            $("#tableSection").show();
                             loadOrders();
                             loadTables();
                         } else {
@@ -574,7 +589,7 @@
                     $("#editOrderId").val(order.id);
                     $("#editOrderNo").val(order.orderNo);
                     $("#modalOrderNo").text(order.orderNo);
-                    $("#editOrderType").val(order.orderType === 'DineIn' ? 'Dine In' : 'Takeaway');
+                    $("#editOrderType").val(order.orderType === 'DineIn' ? '🍽️ Dine In' : '📦 Takeaway');
                     $("#editCustomerName").val(order.customerName || '');
                     $("#editCustomerMobile").val(order.customerMobile || '');
                     $("#editTableName").val(order.tableName || 'N/A');
