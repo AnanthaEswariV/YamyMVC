@@ -556,14 +556,14 @@ namespace YamyResturant.Controllers
                 using var conn = await OpenConnectionAsync();
 
                 string query = @"
-        SELECT id, table_name
-        FROM tbl_restaurant_table
-        WHERE is_active = 1";
+    SELECT id, table_name
+    FROM tbl_restaurant_table
+    WHERE is_active = 1
+    AND status = 'Available'";
 
                 List<object> data = new();
 
                 using var cmd = new MySqlCommand(query, conn);
-
                 using var reader = await cmd.ExecuteReaderAsync();
 
                 while (await reader.ReadAsync())
@@ -575,21 +575,14 @@ namespace YamyResturant.Controllers
                     });
                 }
 
-                return Json(new
-                {
-                    status = true,
-                    data
-                });
+                return Json(new { status = true, data });
             }
             catch (Exception ex)
             {
-                return Json(new
-                {
-                    status = false,
-                    message = ex.Message
-                });
+                return Json(new { status = false, message = ex.Message });
             }
         }
+
         [HttpGet]
         public async Task<IActionResult> GetOrderMenuItems()
         {
@@ -598,18 +591,17 @@ namespace YamyResturant.Controllers
                 using var conn = await OpenConnectionAsync();
 
                 string query = @"
-        SELECT 
-            id,
-            subcategory_name,
-            price,
-            image
-        FROM tbl_menu_item
-        WHERE is_active = 1";
+                    SELECT 
+                        id,
+                        subcategory_name as name,
+                        price,
+                        image
+                    FROM tbl_menu_item
+                    WHERE is_active = 1";
 
                 List<object> data = new();
 
                 using var cmd = new MySqlCommand(query, conn);
-
                 using var reader = await cmd.ExecuteReaderAsync();
 
                 while (await reader.ReadAsync())
@@ -617,143 +609,139 @@ namespace YamyResturant.Controllers
                     data.Add(new
                     {
                         id = reader["id"],
-                        name = reader["subcategory_name"]?.ToString(),
+                        name = reader["name"]?.ToString(),
                         price = reader["price"],
                         image = reader["image"]?.ToString()
                     });
                 }
 
-                return Json(new
-                {
-                    status = true,
-                    data
-                });
+                return Json(new { status = true, data });
             }
             catch (Exception ex)
             {
-                return Json(new
-                {
-                    status = false,
-                    message = ex.Message
-                });
+                return Json(new { status = false, message = ex.Message });
             }
         }
 
         [HttpPost]
-        public async Task<IActionResult> SaveOrder(
-    [FromBody] OrderRequest model)
+        public async Task<IActionResult> SaveOrder([FromBody] OrderRequest model)
         {
             try
             {
                 using var conn = await OpenConnectionAsync();
+                using var transaction = await conn.BeginTransactionAsync();
 
-                using var transaction =
-                    await conn.BeginTransactionAsync();
-
-                // ORDER NUMBER
-                string orderNo = "";
-
-                string orderQuery =
-                @"SELECT IFNULL(MAX(id),0)+1 FROM tbl_order";
-
-                using (var cmd =
-                    new MySqlCommand(orderQuery, conn))
+                // 1. PREVENT BOOKING AN OCCUPIED TABLE (must run BEFORE any insert)
+                if (model.TableId.HasValue && model.TableId > 0)
                 {
-                    cmd.Transaction =
-                        (MySqlTransaction)transaction;
+                    string checkTable = @"
+                SELECT status 
+                FROM tbl_restaurant_table 
+                WHERE id = @tableId";
 
-                    int nextId =
-                        Convert.ToInt32(
-                            await cmd.ExecuteScalarAsync());
+                    using var checkCmd = new MySqlCommand(checkTable, conn);
+                    checkCmd.Transaction = (MySqlTransaction)transaction;
+                    checkCmd.Parameters.AddWithValue("@tableId", model.TableId);
+                    var tableStatus = (await checkCmd.ExecuteScalarAsync())?.ToString();
 
+                    if (tableStatus != "Available")
+                    {
+                        await transaction.RollbackAsync();
+                        return Json(new { status = false, message = "This table is already occupied. Please select another table." });
+                    }
+                }
+
+                // 2. GENERATE ORDER NUMBER
+                string orderNo = "";
+                string orderQuery = @"SELECT IFNULL(MAX(id),0)+1 FROM tbl_order";
+
+                using (var cmd = new MySqlCommand(orderQuery, conn))
+                {
+                    cmd.Transaction = (MySqlTransaction)transaction;
+                    int nextId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
                     orderNo = "ORD" + nextId.ToString("D5");
                 }
 
-                // INSERT ORDER
+                // 3. INSERT ORDER
                 string insertOrder = @"
-        INSERT INTO tbl_order
-        (
-            order_no,
-            table_id,
-            customer_name,
-            customer_mobile,
-            total_amount,
-            discount_amount,
-            tax_amount,
-            grand_total,
-            payment_status,
-            order_status
-        )
-        VALUES
-        (
-            @orderNo,
-            @tableId,
-            @customerName,
-            @customerMobile,
-            @totalAmount,
-            @discountAmount,
-            @taxAmount,
-            @grandTotal,
-            @paymentStatus,
-            @orderStatus
-        );
-
-        SELECT LAST_INSERT_ID();";
+            INSERT INTO tbl_order
+            (
+                order_no,
+                order_type,
+                table_id,
+                customer_name,
+                customer_mobile,
+                total_amount,
+                discount_amount,
+                tax_amount,
+                grand_total,
+                payment_status,
+                order_status,
+                created_date
+            )
+            VALUES
+            (
+                @orderNo,
+                @orderType,
+                @tableId,
+                @customerName,
+                @customerMobile,
+                @totalAmount,
+                @discountAmount,
+                @taxAmount,
+                @grandTotal,
+                @paymentStatus,
+                @orderStatus,
+                @createdDate
+            );
+            SELECT LAST_INSERT_ID();";
 
                 int orderId = 0;
 
-                using (var cmd =
-                    new MySqlCommand(insertOrder, conn))
+                using (var cmd = new MySqlCommand(insertOrder, conn))
                 {
-                    cmd.Transaction =
-                        (MySqlTransaction)transaction;
-
+                    cmd.Transaction = (MySqlTransaction)transaction;
                     cmd.Parameters.AddWithValue("@orderNo", orderNo);
-                    cmd.Parameters.AddWithValue("@orderType",model.OrderType);
-                    cmd.Parameters.AddWithValue( "@tableId", model.TableId ?? (object)DBNull.Value);
-                    cmd.Parameters.AddWithValue("@customerName", model.CustomerName);
-                    cmd.Parameters.AddWithValue("@customerMobile", model.CustomerMobile);
+                    cmd.Parameters.AddWithValue("@orderType", model.OrderType);
+                    cmd.Parameters.AddWithValue("@tableId", model.TableId ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@customerName", model.CustomerName ?? "");
+                    cmd.Parameters.AddWithValue("@customerMobile", model.CustomerMobile ?? "");
                     cmd.Parameters.AddWithValue("@totalAmount", model.TotalAmount);
                     cmd.Parameters.AddWithValue("@discountAmount", model.DiscountAmount);
                     cmd.Parameters.AddWithValue("@taxAmount", model.TaxAmount);
                     cmd.Parameters.AddWithValue("@grandTotal", model.GrandTotal);
                     cmd.Parameters.AddWithValue("@paymentStatus", "Pending");
                     cmd.Parameters.AddWithValue("@orderStatus", "Running");
+                    cmd.Parameters.AddWithValue("@createdDate", DateTime.Now);
 
-                    orderId =
-                        Convert.ToInt32(
-                            await cmd.ExecuteScalarAsync());
+                    orderId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
                 }
 
-                // INSERT ITEMS
+                // 4. INSERT ORDER ITEMS
                 foreach (var item in model.Items)
                 {
                     string detailQuery = @"
-            INSERT INTO tbl_order_details
-            (
-                order_id,
-                menu_item_id,
-                item_name,
-                price,
-                qty,
-                amount
-            )
-            VALUES
-            (
-                @orderId,
-                @menuItemId,
-                @itemName,
-                @price,
-                @qty,
-                @amount
-            )";
+                INSERT INTO tbl_order_details
+                (
+                    order_id,
+                    menu_item_id,
+                    item_name,
+                    price,
+                    qty,
+                    amount
+                )
+                VALUES
+                (
+                    @orderId,
+                    @menuItemId,
+                    @itemName,
+                    @price,
+                    @qty,
+                    @amount
+                )";
 
-                    using var detailCmd =
-                        new MySqlCommand(detailQuery, conn);
-
-                    detailCmd.Transaction =
-                        (MySqlTransaction)transaction;
-
+                    using var detailCmd = new MySqlCommand(detailQuery, conn);
+                    detailCmd.Transaction = (MySqlTransaction)transaction;
                     detailCmd.Parameters.AddWithValue("@orderId", orderId);
                     detailCmd.Parameters.AddWithValue("@menuItemId", item.MenuItemId);
                     detailCmd.Parameters.AddWithValue("@itemName", item.ItemName);
@@ -764,40 +752,283 @@ namespace YamyResturant.Controllers
                     await detailCmd.ExecuteNonQueryAsync();
                 }
 
-                // UPDATE TABLE STATUS
-                string updateTable = @"
-        UPDATE tbl_restaurant_table
-        SET status='Occupied'
-        WHERE id=@tableId";
-
-                using (var tableCmd =
-                    new MySqlCommand(updateTable, conn))
+                // 5. MARK TABLE AS OCCUPIED (this was missing!)
+                if (model.TableId.HasValue && model.TableId > 0)
                 {
-                    tableCmd.Transaction =
-                        (MySqlTransaction)transaction;
+                    string updateTable = @"
+                UPDATE tbl_restaurant_table
+                SET status = 'Occupied'
+                WHERE id = @tableId";
 
-                    tableCmd.Parameters.AddWithValue(
-                        "@tableId",
-                        model.TableId);
-
+                    using var tableCmd = new MySqlCommand(updateTable, conn);
+                    tableCmd.Transaction = (MySqlTransaction)transaction;
+                    tableCmd.Parameters.AddWithValue("@tableId", model.TableId);
                     await tableCmd.ExecuteNonQueryAsync();
                 }
 
+                // 6. COMMIT
                 await transaction.CommitAsync();
 
                 return Json(new
                 {
                     status = true,
-                    message = "Order saved successfully"
+                    message = "Order saved successfully",
+                    orderId = orderId,
+                    orderNo = orderNo
                 });
             }
             catch (Exception ex)
             {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetOrders()
+        {
+            try
+            {
+                using var conn = await OpenConnectionAsync();
+
+                string query = @"
+                    SELECT 
+                        o.id,
+                        o.order_no as orderNo,
+                        o.customer_name as customerName,
+                        o.customer_mobile as customerMobile,
+                        o.total_amount as totalAmount,
+                        o.grand_total as grandTotal,
+                        o.payment_status as paymentStatus,
+                        o.order_status as orderStatus,
+                        o.order_type as orderType,
+                        t.table_name as tableName,
+                        COUNT(od.id) as itemCount
+                    FROM tbl_order o
+                    LEFT JOIN tbl_restaurant_table t ON o.table_id = t.id
+                    LEFT JOIN tbl_order_details od ON o.id = od.order_id
+                    GROUP BY o.id, o.order_no, o.customer_name, o.customer_mobile, o.total_amount, 
+                             o.grand_total, o.payment_status, o.order_status, o.order_type, t.table_name
+                    ORDER BY o.id DESC
+                    LIMIT 100";
+
+                List<object> data = new();
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    data.Add(new
+                    {
+                        id = reader["id"],
+                        orderNo = reader["orderNo"]?.ToString(),
+                        customerName = reader["customerName"]?.ToString(),
+                        customerMobile = reader["customerMobile"]?.ToString(),
+                        totalAmount = reader["totalAmount"],
+                        grandTotal = reader["grandTotal"],
+                        paymentStatus = reader["paymentStatus"]?.ToString(),
+                        orderStatus = reader["orderStatus"]?.ToString(),
+                        orderType = reader["orderType"]?.ToString() ?? "DineIn",
+                        tableName = reader["tableName"]?.ToString() ?? "N/A",
+                        itemCount = reader["itemCount"]
+                    });
+                }
+
+                return Json(new { status = true, data });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetOrderDetails(int id)
+        {
+            try
+            {
+                using var conn = await OpenConnectionAsync();
+
+                // Get order header
+                string orderQuery = @"
+                    SELECT 
+                        o.id,
+                        o.order_no as orderNo,
+                        o.customer_name as customerName,
+                        o.customer_mobile as customerMobile,
+                        o.total_amount as totalAmount,
+                        o.discount_amount as discountAmount,
+                        o.tax_amount as taxAmount,
+                        o.grand_total as grandTotal,
+                        o.payment_status as paymentStatus,
+                        o.order_status as orderStatus,
+                        o.order_type as orderType,
+                        t.table_name as tableName
+                    FROM tbl_order o
+                    LEFT JOIN tbl_restaurant_table t ON o.table_id = t.id
+                    WHERE o.id = @orderId";
+
+                object orderData = null;
+
+                using (var cmd = new MySqlCommand(orderQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@orderId", id);
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        orderData = new
+                        {
+                            id = reader["id"],
+                            orderNo = reader["orderNo"]?.ToString(),
+                            customerName = reader["customerName"]?.ToString(),
+                            customerMobile = reader["customerMobile"]?.ToString(),
+                            totalAmount = reader["totalAmount"],
+                            discountAmount = reader["discountAmount"],
+                            taxAmount = reader["taxAmount"],
+                            grandTotal = reader["grandTotal"],
+                            paymentStatus = reader["paymentStatus"]?.ToString(),
+                            orderStatus = reader["orderStatus"]?.ToString(),
+                            orderType = reader["orderType"]?.ToString(),
+                            tableName = reader["tableName"]?.ToString()
+                        };
+                    }
+                }
+
+                // Get order items
+                string itemsQuery = @"
+                    SELECT 
+                        id,
+                        menu_item_id as menuItemId,
+                        item_name as itemName,
+                        price,
+                        qty,
+                        amount
+                    FROM tbl_order_details
+                    WHERE order_id = @orderId";
+
+                List<object> items = new();
+
+                using (var cmd = new MySqlCommand(itemsQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@orderId", id);
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        items.Add(new
+                        {
+                            id = reader["id"],
+                            menuItemId = reader["menuItemId"],
+                            itemName = reader["itemName"]?.ToString(),
+                            price = reader["price"],
+                            qty = reader["qty"],
+                            amount = reader["amount"]
+                        });
+                    }
+                }
+
                 return Json(new
                 {
-                    status = false,
-                    message = ex.Message
+                    status = true,
+                    data = new { order = orderData, items }
                 });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateOrderStatus([FromBody] UpdateOrderStatusRequest model)
+        {
+            try
+            {
+                using var conn = await OpenConnectionAsync();
+
+                // RULE: cannot complete unless payment is Paid
+                if (model.Status == "Completed")
+                {
+                    string payQuery = "SELECT payment_status FROM tbl_order WHERE id = @orderId";
+                    using var payCmd = new MySqlCommand(payQuery, conn);
+                    payCmd.Parameters.AddWithValue("@orderId", model.OrderId);
+                    var paymentStatus = (await payCmd.ExecuteScalarAsync())?.ToString();
+
+                    if (paymentStatus != "Paid")
+                    {
+                        return Json(new { status = false, message = "Order can only be completed after payment is marked as Paid." });
+                    }
+                }
+
+                string query = @"
+            UPDATE tbl_order
+            SET order_status = @status
+            WHERE id = @orderId";
+
+                int affected;
+                using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@status", model.Status);
+                    cmd.Parameters.AddWithValue("@orderId", model.OrderId);
+                    affected = await cmd.ExecuteNonQueryAsync();
+                }
+
+                if (affected == 0)
+                    return Json(new { status = false, message = "Order not found" });
+
+                // FREE THE TABLE ON COMPLETE / CANCEL
+                if (model.Status == "Completed" || model.Status == "Cancelled")
+                {
+                    string freeTable = @"
+                UPDATE tbl_restaurant_table t
+                INNER JOIN tbl_order o ON o.table_id = t.id
+                SET t.status = 'Available'
+                WHERE o.id = @orderId";
+
+                    using var freeCmd = new MySqlCommand(freeTable, conn);
+                    freeCmd.Parameters.AddWithValue("@orderId", model.OrderId);
+                    await freeCmd.ExecuteNonQueryAsync();
+                }
+
+                return Json(new { status = true, message = "Order status updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+        [HttpPost]
+        public async Task<IActionResult> DeleteOrder([FromBody] DeleteOrderRequest model)
+        {
+            try
+            {
+                using var conn = await OpenConnectionAsync();
+                using var transaction = await conn.BeginTransactionAsync();
+
+                // Delete order details
+                string deleteDetailsQuery = "DELETE FROM tbl_order_details WHERE order_id = @orderId";
+                using (var cmd = new MySqlCommand(deleteDetailsQuery, conn))
+                {
+                    cmd.Transaction = (MySqlTransaction)transaction;
+                    cmd.Parameters.AddWithValue("@orderId", model.OrderId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // Delete order
+                string deleteOrderQuery = "DELETE FROM tbl_order WHERE id = @orderId";
+                using (var cmd = new MySqlCommand(deleteOrderQuery, conn))
+                {
+                    cmd.Transaction = (MySqlTransaction)transaction;
+                    cmd.Parameters.AddWithValue("@orderId", model.OrderId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                await transaction.CommitAsync();
+
+                return Json(new { status = true, message = "Order deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
             }
         }
 
@@ -810,30 +1041,23 @@ namespace YamyResturant.Controllers
 
                 if (conn == null)
                 {
-                    return Json(new
-                    {
-                        status = false,
-                        message = "Session expired"
-                    });
+                    return Json(new { status = false, message = "Session expired" });
                 }
 
                 string query = @"
-        SELECT
-            id,
-            code,
-            name,
-            mobile
-        FROM tbl_customer
-        WHERE active = 0
-        ORDER BY name";
+                    SELECT
+                        id,
+                        code,
+                        name,
+                        mobile
+                    FROM tbl_customer
+                    WHERE active = 0
+                    ORDER BY name";
 
                 List<object> data = new();
 
-                using var cmd =
-                    new MySqlCommand(query, conn);
-
-                using var reader =
-                    await cmd.ExecuteReaderAsync();
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
 
                 while (await reader.ReadAsync())
                 {
@@ -846,19 +1070,11 @@ namespace YamyResturant.Controllers
                     });
                 }
 
-                return Json(new
-                {
-                    status = true,
-                    data
-                });
+                return Json(new { status = true, data });
             }
             catch (Exception ex)
             {
-                return Json(new
-                {
-                    status = false,
-                    message = ex.Message
-                });
+                return Json(new { status = false, message = ex.Message });
             }
         }
 
@@ -877,21 +1093,6 @@ namespace YamyResturant.Controllers
 
             if (model.CountryId == null || model.CountryId <= 0)
                 return Json(new { status = false, message = "Please select country" });
-
-            if (model.OpeningBalanceDate.HasValue &&
-    model.OpeningBalanceDate.Value.Date > DateTime.Now.Date)
-            {
-                return Json(new { status = false, message = "Opening balance date must be today or earlier" });
-            }
-
-            if (!string.IsNullOrWhiteSpace(model.TRN))
-            {
-                if (model.TRN.Length < 3 || model.TRN.Length > 15)
-                {
-                    return Json(new { status = false, message = "TRN must be between 3 and 15 characters" });
-                }
-            }
-
 
             int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
             if (userId <= 0)
@@ -920,7 +1121,8 @@ namespace YamyResturant.Controllers
                 }
 
                 string formattedCode = model.Code;
-                if (model.Id == 0) // Insert
+
+                if (model.Id == 0) // INSERT
                 {
                     // Generate next customer code
                     int lastCode = 0;
@@ -934,193 +1136,129 @@ namespace YamyResturant.Controllers
                     formattedCode = (lastCode + 1).ToString("D5");
 
                     // Insert customer
-                    var projectSite = string.Join(",", model.ProjectSites);
                     var insertQuery = @"INSERT INTO tbl_customer 
-        (code, NAME, Cat_id, Balance, DATE, main_phone, work_phone, mobile, email, ccemail, website, 
-        country, city, region, building_name, account_id, trn, facilty_name, active, created_by, created_date, state, project_site)
-        VALUES(@code,@name,@cat_id,@balance,@date,@main_phone,@work_phone,@mobile,@email,@ccemail,@website,
-        @country,@city,@region,@building_name,@account_id,@trn,@facilty_name,@active,@created_by,@created_date,0,@project_site);
-        SELECT LAST_INSERT_ID();";
+                        (code, name, cat_id, mobile, email, country, active, created_by, created_date)
+                        VALUES(@code, @name, @cat_id, @mobile, @email, @country, @active, @created_by, @created_date);
+                        SELECT LAST_INSERT_ID();";
 
                     using var insertCmd = new MySqlCommand(insertQuery, conn);
                     insertCmd.Parameters.AddWithValue("@code", formattedCode);
                     insertCmd.Parameters.AddWithValue("@name", model.Name.Trim());
                     insertCmd.Parameters.AddWithValue("@cat_id", model.CategoryId);
-                    decimal balance = (model.Debit ?? 0) - (model.Credit ?? 0);
-                    insertCmd.Parameters.AddWithValue("@balance", balance);
-                    insertCmd.Parameters.AddWithValue("@date", model.OpeningBalanceDate);
-                    insertCmd.Parameters.AddWithValue("@main_phone", model.MainPhone ?? "");
-                    insertCmd.Parameters.AddWithValue("@work_phone", model.WorkPhone ?? "");
                     insertCmd.Parameters.AddWithValue("@mobile", model.Mobile ?? "");
                     insertCmd.Parameters.AddWithValue("@email", model.Email ?? "");
-                    insertCmd.Parameters.AddWithValue("@ccemail", model.CCEmail ?? "");
-                    insertCmd.Parameters.AddWithValue("@website", model.Website ?? "");
                     insertCmd.Parameters.AddWithValue("@country", model.CountryId);
-                    insertCmd.Parameters.AddWithValue("@city", model.CityId ?? 0);
-                    insertCmd.Parameters.AddWithValue("@region", model.Region ?? "");
-                    insertCmd.Parameters.AddWithValue("@building_name", model.BuildingName ?? "");
-                    insertCmd.Parameters.AddWithValue("@account_id", model.AccountId ?? 0);
-                    insertCmd.Parameters.AddWithValue("@trn", model.TRN ?? "");
-                    insertCmd.Parameters.AddWithValue("@facilty_name", model.FacilityName ?? "");
                     insertCmd.Parameters.AddWithValue("@active", model.Active ? 0 : -1);
                     insertCmd.Parameters.AddWithValue("@created_by", userId);
                     insertCmd.Parameters.AddWithValue("@created_date", DateTime.Now);
-                    insertCmd.Parameters.AddWithValue("@project_site", projectSite);
 
                     var customerId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
 
-                    // Process opening balance
-                    await ProcessOpeningBalanceAsync(conn, customerId, formattedCode, userId, model);
-
-                    return Json(new { status = true, message = "Customer added successfully", code = formattedCode });
+                    return Json(new
+                    {
+                        status = true,
+                        message = "Customer added successfully",
+                        customerId = customerId,
+                        code = formattedCode
+                    });
                 }
-                else // Update
+                else // UPDATE
                 {
-
-                    var projectSite = string.Join(",", model.ProjectSites);
                     var updateQuery = @"UPDATE tbl_customer SET 
-                            code=@code, NAME=@name, Cat_id=@cat_id, DATE=@date, main_phone=@main_phone,
-                            work_phone=@work_phone, mobile=@mobile, email=@email, ccemail=@ccemail, website=@website,
-                            country=@country, city=@city, region=@region,  project_site=@project_site,
-                            building_name=@building_name, account_id=@account_id, trn=@trn, facilty_name=@facilty_name,
-                            active=@active, Balance=@balance
+                            code=@code, name=@name, cat_id=@cat_id, mobile=@mobile, email=@email,
+                            country=@country, active=@active
                         WHERE id=@id";
 
                     using var updateCmd = new MySqlCommand(updateQuery, conn);
                     updateCmd.Parameters.AddWithValue("@code", model.Code);
                     updateCmd.Parameters.AddWithValue("@name", model.Name.Trim());
                     updateCmd.Parameters.AddWithValue("@cat_id", model.CategoryId);
-                    updateCmd.Parameters.AddWithValue("@date", model.OpeningBalanceDate);
-                    updateCmd.Parameters.AddWithValue("@main_phone", model.MainPhone ?? "");
-                    updateCmd.Parameters.AddWithValue("@work_phone", model.WorkPhone ?? "");
                     updateCmd.Parameters.AddWithValue("@mobile", model.Mobile ?? "");
                     updateCmd.Parameters.AddWithValue("@email", model.Email ?? "");
-                    updateCmd.Parameters.AddWithValue("@ccemail", model.CCEmail ?? "");
-                    updateCmd.Parameters.AddWithValue("@website", model.Website ?? "");
                     updateCmd.Parameters.AddWithValue("@country", model.CountryId);
-                    updateCmd.Parameters.AddWithValue("@city", model.CityId ?? 0);
-                    updateCmd.Parameters.AddWithValue("@region", model.Region ?? "");
-                    updateCmd.Parameters.AddWithValue("@building_name", model.BuildingName ?? "");
-                    updateCmd.Parameters.AddWithValue("@account_id", model.AccountId ?? 0);
-                    updateCmd.Parameters.AddWithValue("@trn", model.TRN ?? "");
-                    updateCmd.Parameters.AddWithValue("@facilty_name", model.FacilityName ?? "");
                     updateCmd.Parameters.AddWithValue("@active", model.Active ? 0 : -1);
-                    decimal balance = (model.Debit ?? 0) - (model.Credit ?? 0);
-                    updateCmd.Parameters.AddWithValue("@balance", balance);
-                    updateCmd.Parameters.AddWithValue("@project_site", projectSite);
                     updateCmd.Parameters.AddWithValue("@id", model.Id);
 
-                    int affected = await updateCmd.ExecuteNonQueryAsync();
+                    await updateCmd.ExecuteNonQueryAsync();
 
                     return Json(new { status = true, message = "Customer updated successfully" });
                 }
             }
             catch (Exception ex)
             {
-                return Json(500, new { status = false, message = ex.Message });
+                return Json(new { status = false, message = ex.Message });
             }
         }
-        private async Task ProcessOpeningBalanceAsync(MySqlConnection conn, int customerId, string formattedCode, int userId, CustomerRequest model)
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateOrder([FromBody] UpdateOrderRequest model)
         {
-            decimal debitAmount = model.Debit ?? 0;
-            decimal creditAmount = model.Credit ?? 0;
-            string accountId = model.AccountId?.ToString() ?? "0";
-
-            // Get Opening Balance Equity account ID
-            string openingBalanceEquity = await SelectDefaultLevelAccountAsync(conn, "Opening Balance Equity");
-            if (string.IsNullOrWhiteSpace(openingBalanceEquity) || openingBalanceEquity == "0")
+            try
             {
-                var cmd = new MySqlCommand("SELECT id FROM tbl_coa_level_4 WHERE name='Opening Balance Equity'", conn);
-                var result = await cmd.ExecuteScalarAsync();
-                if (result != null && result != DBNull.Value)
-                    openingBalanceEquity = result.ToString();
+                using var conn = await OpenConnectionAsync();
+
+                // RULE: Completed only allowed when payment is Paid
+                if (model.OrderStatus == "Completed" && model.PaymentStatus != "Paid")
+                {
+                    return Json(new { status = false, message = "Order can only be completed after payment is marked as Paid." });
+                }
+
+                string query = @"
+            UPDATE tbl_order
+            SET 
+                customer_name = @customerName,
+                customer_mobile = @customerMobile,
+                order_status = @orderStatus,
+                payment_status = @paymentStatus,
+                discount_amount = @discountAmount,
+                grand_total = @grand_total,
+                tax_amount = @taxAmount
+            WHERE id = @orderId";
+
+                int affected;
+                using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@customerName", model.CustomerName ?? "");
+                    cmd.Parameters.AddWithValue("@customerMobile", model.CustomerMobile ?? "");
+                    cmd.Parameters.AddWithValue("@orderStatus", model.OrderStatus);
+                    cmd.Parameters.AddWithValue("@paymentStatus", model.PaymentStatus);
+                    cmd.Parameters.AddWithValue("@discountAmount", model.DiscountAmount);
+                    cmd.Parameters.AddWithValue("@taxAmount", model.TaxAmount);
+                    cmd.Parameters.AddWithValue("@grand_total", model.GrandTotal);
+                    cmd.Parameters.AddWithValue("@orderId", model.OrderId);
+
+                    affected = await cmd.ExecuteNonQueryAsync();
+                }
+
+                if (affected == 0)
+                    return Json(new { status = false, message = "Order not found" });
+
+                // FREE THE TABLE WHEN ORDER IS COMPLETED OR CANCELLED
+                if (model.OrderStatus == "Completed" || model.OrderStatus == "Cancelled")
+                {
+                    string freeTable = @"
+                UPDATE tbl_restaurant_table t
+                INNER JOIN tbl_order o ON o.table_id = t.id
+                SET t.status = 'Available'
+                WHERE o.id = @orderId";
+
+                    using var freeCmd = new MySqlCommand(freeTable, conn);
+                    freeCmd.Parameters.AddWithValue("@orderId", model.OrderId);
+                    await freeCmd.ExecuteNonQueryAsync();
+                }
+
+                return Json(new { status = true, message = "Order updated successfully" });
             }
-
-            if (string.IsNullOrWhiteSpace(openingBalanceEquity) || openingBalanceEquity == "0")
-                throw new Exception("Cannot make opening balance without Opening Balance Equity account");
-
-            DateTime transactionDate = model.OpeningBalanceDate ?? DateTime.Now;
-
-            // Mimic your synchronous logic
-
-            if (creditAmount != 0)
+            catch (Exception ex)
             {
-                // Credit transaction: 
-                // 1) Opening Balance Equity - Debit = creditAmount, Credit=0
-                await AddTransactionEntryAsync(
-                    conn, transactionDate, openingBalanceEquity,
-                    creditAmount.ToString(), "0",
-                    customerId.ToString(), "0",
-                    "Customer Opening Balance", "OPENING BALANCE",
-                    $"Opening Balance Equity - Customer Code - {formattedCode}",
-                    userId, DateTime.Now, "");
-
-                // 2) Customer Account - Debit=0, Credit=creditAmount
-                await AddTransactionEntryAsync(
-                    conn, transactionDate, openingBalanceEquity,
-                    "0", creditAmount.ToString(),
-                    customerId.ToString(), customerId.ToString(),
-                    "Customer Opening Balance", "OPENING BALANCE",
-                    $"Opening Balance - Customer Code - {formattedCode}",
-                    userId, DateTime.Now, "");
-            }
-
-            if (debitAmount != 0)
-            {
-                // Debit transaction:
-                // 1) Opening Balance Equity - Debit=0, Credit=debitAmount
-                await AddTransactionEntryAsync(
-                    conn, transactionDate, openingBalanceEquity,
-                    "0", debitAmount.ToString(),
-                    customerId.ToString(), "0",
-                    "Customer Opening Balance", "OPENING BALANCE",
-                    $"Opening Balance Equity - Customer Code - {formattedCode}",
-                    userId, DateTime.Now, "");
-
-                // 2) Customer Account - Debit=debitAmount, Credit=0
-                await AddTransactionEntryAsync(
-                    conn, transactionDate, openingBalanceEquity,
-                    debitAmount.ToString(), "0",
-                    customerId.ToString(), customerId.ToString(),
-                    "Customer Opening Balance", "OPENING BALANCE",
-                    $"Opening Balance - Customer Code - {formattedCode}",
-                    userId, DateTime.Now, "");
+                return Json(new { status = false, message = ex.Message });
             }
         }
 
-        public static async Task AddTransactionEntryAsync(MySqlConnection conn, DateTime date, string accountId, string debit, string credit,
-               string transactionId, string humId, string type, string voucherName, string description,
-               int createdBy, DateTime createdDate, string voucherNo)
-        {
-            var query = @"INSERT INTO tbl_transaction 
-            (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no) 
-            VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @type, @description, @createdBy, @createdDate, 0, @voucher_no)";
-
-            using var cmd = new MySqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@date", date);
-            cmd.Parameters.AddWithValue("@accountId", accountId);
-            cmd.Parameters.AddWithValue("@debit", debit);
-            cmd.Parameters.AddWithValue("@credit", credit);
-            cmd.Parameters.AddWithValue("@transactionId", transactionId);
-            cmd.Parameters.AddWithValue("@hum_id", humId);
-            cmd.Parameters.AddWithValue("@tType", voucherName);
-            cmd.Parameters.AddWithValue("@type", type);
-            cmd.Parameters.AddWithValue("@description", description);
-            cmd.Parameters.AddWithValue("@createdBy", createdBy);
-            cmd.Parameters.AddWithValue("@createdDate", createdDate);
-            cmd.Parameters.AddWithValue("@voucher_no", voucherNo);
-
-            await cmd.ExecuteNonQueryAsync();
-        }
-
-        public static async Task<string> SelectDefaultLevelAccountAsync(MySqlConnection conn, string accountName)
-        {
-            var cmd = new MySqlCommand("SELECT id FROM tbl_coa_level_4 WHERE name=@name LIMIT 1", conn);
-            cmd.Parameters.AddWithValue("@name", accountName);
-            var result = await cmd.ExecuteScalarAsync();
-            return result?.ToString() ?? "0";
-        }
 
         #endregion
+
+
+
     }
 }
