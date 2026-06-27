@@ -108,4 +108,15 @@
     {
         public int OrderId { get; set; }
     }
+    public class TransferTableRequest
+    {
+        public int OrderId { get; set; }
+        public int NewTableId { get; set; }
+    }
+
+    public class KitchenStatusRequest
+    {
+        public int OrderId { get; set; }
+        public string Status { get; set; }   // New | Preparing | Ready | Served
+    }
 }

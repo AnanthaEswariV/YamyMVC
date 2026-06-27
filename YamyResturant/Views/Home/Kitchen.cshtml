@@ -1,0 +1,309 @@
+﻿@{
+    ViewData["Title"] = "Kitchen Display";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+
+<style>
+    :root {
+        --kds-bg: #11161d;
+        --kds-card: #1b2330;
+        --kds-ink: #f1f5f9;
+        --kds-muted: #94a3b8;
+        --kds-line: #2a3444;
+        --kds-new: #f59e0b;
+        --kds-prep: #3b82f6;
+        --kds-ready: #22c55e;
+    }
+
+    .kds-shell {
+        background: var(--kds-bg);
+        border-radius: 16px;
+        padding: 16px;
+        min-height: 80vh;
+    }
+
+    .kds-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+        color: var(--kds-ink);
+    }
+
+        .kds-top h3 {
+            margin: 0;
+            font-weight: 800;
+        }
+
+    .kds-legend {
+        display: flex;
+        gap: 14px;
+        font-size: .85rem;
+        color: var(--kds-muted);
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .kds-dot {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        margin-right: 5px;
+        vertical-align: middle;
+    }
+
+    .kds-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 14px;
+    }
+
+    .kds-card {
+        background: var(--kds-card);
+        border: 1px solid var(--kds-line);
+        border-top: 5px solid var(--kds-new);
+        border-radius: 14px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+        .kds-card.prep {
+            border-top-color: var(--kds-prep);
+        }
+
+        .kds-card.ready {
+            border-top-color: var(--kds-ready);
+        }
+
+    .kds-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--kds-line);
+    }
+
+    .kds-no {
+        font-weight: 800;
+        color: var(--kds-ink);
+        font-size: 1.05rem;
+    }
+
+    .kds-table {
+        font-size: .8rem;
+        color: var(--kds-muted);
+    }
+
+    .kds-badge {
+        font-size: .72rem;
+        font-weight: 700;
+        padding: 3px 10px;
+        border-radius: 999px;
+        color: #0b0f14;
+    }
+
+        .kds-badge.new {
+            background: var(--kds-new);
+        }
+
+        .kds-badge.prep {
+            background: var(--kds-prep);
+            color: #fff;
+        }
+
+        .kds-badge.ready {
+            background: var(--kds-ready);
+            color: #06210f;
+        }
+
+    .kds-items {
+        padding: 10px 14px;
+        flex: 1;
+    }
+
+    .kds-item {
+        display: flex;
+        justify-content: space-between;
+        color: var(--kds-ink);
+        padding: 5px 0;
+        border-bottom: 1px dashed var(--kds-line);
+        font-size: .95rem;
+    }
+
+        .kds-item:last-child {
+            border-bottom: 0;
+        }
+
+    .kds-qty {
+        color: var(--kds-muted);
+        font-weight: 700;
+    }
+
+    .kds-foot {
+        padding: 10px 14px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .kds-time {
+        font-size: .75rem;
+        color: var(--kds-muted);
+        margin-right: auto;
+    }
+
+    .kds-btn {
+        border: 0;
+        border-radius: 10px;
+        padding: 9px 12px;
+        font-weight: 700;
+        color: #fff;
+        cursor: pointer;
+        font-size: .85rem;
+    }
+
+        .kds-btn.advance {
+            background: #2563eb;
+        }
+
+            .kds-btn.advance.toready {
+                background: #16a34a;
+            }
+
+            .kds-btn.advance.toserved {
+                background: #475569;
+            }
+
+        .kds-btn:hover {
+            filter: brightness(1.08);
+        }
+
+    .kds-empty {
+        color: var(--kds-muted);
+        text-align: center;
+        padding: 60px 20px;
+        font-size: 1.05rem;
+    }
+</style>
+
+<div class="container-fluid mt-3">
+    <div class="kds-shell">
+        <div class="kds-top">
+            <h3><i class="fas fa-fire" style="color:var(--kds-new)"></i> Kitchen Display</h3>
+            <div class="kds-legend">
+                <span><span class="kds-dot" style="background:var(--kds-new)"></span> New</span>
+                <span><span class="kds-dot" style="background:var(--kds-prep)"></span> Preparing</span>
+                <span><span class="kds-dot" style="background:var(--kds-ready)"></span> Ready</span>
+                <button class="btn btn-sm btn-light ms-2" id="kdsRefresh"><i class="fas fa-sync"></i></button>
+            </div>
+        </div>
+        <div class="kds-grid" id="kdsGrid"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <script>
+        // Stage configuration: what each status advances to, and the button label
+        const NEXT = {
+            'New':       { to: 'Preparing', label: 'Start Preparing', cls: '' },
+            'Preparing': { to: 'Ready',     label: 'Mark Ready',      cls: 'toready' },
+            'Ready':     { to: 'Served',    label: 'Mark Served',     cls: 'toserved' }
+        };
+
+        function cardClass(s) {
+            if (s === 'Preparing') return 'prep';
+            if (s === 'Ready') return 'ready';
+            return '';
+        }
+        function badgeClass(s) {
+            if (s === 'Preparing') return 'prep';
+            if (s === 'Ready') return 'ready';
+            return 'new';
+        }
+
+        function elapsed(createdDate) {
+            if (!createdDate) return '';
+            let then = new Date(createdDate).getTime();
+            if (isNaN(then)) return '';
+            let mins = Math.floor((Date.now() - then) / 60000);
+            if (mins < 1) return 'just now';
+            if (mins === 1) return '1 min ago';
+            if (mins < 60) return mins + ' mins ago';
+            let h = Math.floor(mins / 60);
+            return h + 'h ' + (mins % 60) + 'm ago';
+        }
+
+        function loadKitchen() {
+            $.get('@Url.Action("GetKitchenOrders", "Home")', function (res) {
+                if (!res.status) { toastr.error(res.message || "Failed to load kitchen orders"); return; }
+
+                let orders = res.data || [];
+                if (orders.length === 0) {
+                    $("#kdsGrid").html(`<div class="kds-empty"><i class="fas fa-check-circle"></i><br>No orders in the kitchen right now.</div>`);
+                    return;
+                }
+
+                let html = "";
+                $.each(orders, function (i, o) {
+                    let st = o.kitchenStatus || 'New';
+                    let next = NEXT[st];
+
+                    let itemsHtml = "";
+                    $.each(o.items || [], function (j, it) {
+                        itemsHtml += `<div class="kds-item"><span>${it.itemName}</span><span class="kds-qty">x ${it.qty}</span></div>`;
+                    });
+                    if (!itemsHtml) itemsHtml = `<div class="kds-item"><span class="kds-qty">No items</span></div>`;
+
+                    let typeLabel = o.orderType === 'DineIn' ? o.tableName : 'Takeaway';
+
+                    html += `
+                    <div class="kds-card ${cardClass(st)}">
+                        <div class="kds-card-head">
+                            <div>
+                                <div class="kds-no">${o.orderNo}</div>
+                                <div class="kds-table">${typeLabel}</div>
+                            </div>
+                            <span class="kds-badge ${badgeClass(st)}">${st}</span>
+                        </div>
+                        <div class="kds-items">${itemsHtml}</div>
+                        <div class="kds-foot">
+                            <span class="kds-time">${elapsed(o.createdDate)}</span>
+                            ${next ? `<button class="kds-btn advance ${next.cls}" onclick="advance(${o.id}, '${next.to}')">${next.label}</button>` : ''}
+                        </div>
+                    </div>`;
+                });
+                $("#kdsGrid").html(html);
+            }).fail(function () { toastr.error("Error loading kitchen orders"); });
+        }
+
+        function advance(orderId, toStatus) {
+            $.ajax({
+                url: '@Url.Action("UpdateKitchenStatus", "Home")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ orderId: orderId, status: toStatus }),
+                success: function (res) {
+                    if (res.status) {
+                        if (toStatus === 'Served') toastr.success('Order served');
+                        loadKitchen();
+                    } else { toastr.error(res.message); }
+                },
+                error: function (xhr) { toastr.error(xhr.responseJSON?.message || "Failed to update"); }
+            });
+        }
+
+        $(document).ready(function () {
+            toastr.options.timeOut = 1500;
+            loadKitchen();
+            setInterval(loadKitchen, 10000);   // auto-refresh every 10s
+            $("#kdsRefresh").click(function () { loadKitchen(); });
+        });
+    </script>
+}

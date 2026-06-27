@@ -710,6 +710,7 @@ namespace YamyResturant.Controllers
                     cmd.Parameters.AddWithValue("@discountAmount", model.DiscountAmount);
                     cmd.Parameters.AddWithValue("@taxAmount", model.TaxAmount);
                     cmd.Parameters.AddWithValue("@grandTotal", model.GrandTotal);
+                    cmd.Parameters.AddWithValue("@kitchenStatus", "New");
                     cmd.Parameters.AddWithValue("@paymentStatus", "Pending");
                     cmd.Parameters.AddWithValue("@orderStatus", "Running");
                     cmd.Parameters.AddWithValue("@createdDate", DateTime.Now);
@@ -1255,8 +1256,237 @@ namespace YamyResturant.Controllers
             }
         }
 
+        [HttpPost]
+        public async Task<IActionResult> TransferTable([FromBody] TransferTableRequest model)
+        {
+            try
+            {
+                using var conn = await OpenConnectionAsync();
+                using var transaction = await conn.BeginTransactionAsync();
+
+                // 1. Get the order + its current table, and make sure it's a running dine-in order
+                int? oldTableId = null;
+                string orderStatus = "";
+                string orderType = "";
+
+                string getOrder = @"SELECT table_id, order_status, order_type FROM tbl_order WHERE id = @orderId";
+                using (var cmd = new MySqlCommand(getOrder, conn))
+                {
+                    cmd.Transaction = (MySqlTransaction)transaction;
+                    cmd.Parameters.AddWithValue("@orderId", model.OrderId);
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        oldTableId = reader["table_id"] == DBNull.Value ? (int?)null : Convert.ToInt32(reader["table_id"]);
+                        orderStatus = reader["order_status"]?.ToString() ?? "";
+                        orderType = reader["order_type"]?.ToString() ?? "";
+                    }
+                    else
+                    {
+                        await transaction.RollbackAsync();
+                        return Json(new { status = false, message = "Order not found" });
+                    }
+                }
+
+                if (orderType != "DineIn")
+                {
+                    await transaction.RollbackAsync();
+                    return Json(new { status = false, message = "Only dine-in orders can be transferred to a table." });
+                }
+                if (orderStatus != "Running")
+                {
+                    await transaction.RollbackAsync();
+                    return Json(new { status = false, message = "Only running orders can be transferred." });
+                }
+                if (oldTableId == model.NewTableId)
+                {
+                    await transaction.RollbackAsync();
+                    return Json(new { status = false, message = "The order is already on that table." });
+                }
+
+                // 2. Make sure the target table is free
+                string checkTarget = @"SELECT status FROM tbl_restaurant_table WHERE id = @tableId";
+                using (var cmd = new MySqlCommand(checkTarget, conn))
+                {
+                    cmd.Transaction = (MySqlTransaction)transaction;
+                    cmd.Parameters.AddWithValue("@tableId", model.NewTableId);
+                    var targetStatus = (await cmd.ExecuteScalarAsync())?.ToString();
+                    if (targetStatus == null)
+                    {
+                        await transaction.RollbackAsync();
+                        return Json(new { status = false, message = "Target table not found" });
+                    }
+                    if (targetStatus != "Available")
+                    {
+                        await transaction.RollbackAsync();
+                        return Json(new { status = false, message = "That table is already occupied. Pick a free one." });
+                    }
+                }
+
+                // 3. Point the order at the new table
+                string moveOrder = @"UPDATE tbl_order SET table_id = @newTableId WHERE id = @orderId";
+                using (var cmd = new MySqlCommand(moveOrder, conn))
+                {
+                    cmd.Transaction = (MySqlTransaction)transaction;
+                    cmd.Parameters.AddWithValue("@newTableId", model.NewTableId);
+                    cmd.Parameters.AddWithValue("@orderId", model.OrderId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // 4. Occupy the new table
+                string occupyNew = @"UPDATE tbl_restaurant_table SET status = 'Occupied' WHERE id = @newTableId";
+                using (var cmd = new MySqlCommand(occupyNew, conn))
+                {
+                    cmd.Transaction = (MySqlTransaction)transaction;
+                    cmd.Parameters.AddWithValue("@newTableId", model.NewTableId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // 5. Free the old table (only if no other running order still uses it)
+                if (oldTableId.HasValue && oldTableId.Value > 0)
+                {
+                    string freeOld = @"
+                UPDATE tbl_restaurant_table
+                SET status = 'Available'
+                WHERE id = @oldTableId
+                AND NOT EXISTS (
+                    SELECT 1 FROM tbl_order
+                    WHERE table_id = @oldTableId AND order_status = 'Running'
+                )";
+                    using var cmd = new MySqlCommand(freeOld, conn);
+                    cmd.Transaction = (MySqlTransaction)transaction;
+                    cmd.Parameters.AddWithValue("@oldTableId", oldTableId.Value);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                await transaction.CommitAsync();
+                return Json(new { status = true, message = "Order transferred to the new table." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public IActionResult Kitchen()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetKitchenOrders()
+        {
+            try
+            {
+                using var conn = await OpenConnectionAsync();
+
+                // Only orders still relevant to the kitchen: running and not yet served
+                string query = @"
+            SELECT 
+                o.id,
+                o.order_no       AS orderNo,
+                o.order_type     AS orderType,
+                o.kitchen_status AS kitchenStatus,
+                o.created_date   AS createdDate,
+                t.table_name     AS tableName
+            FROM tbl_order o
+            LEFT JOIN tbl_restaurant_table t ON o.table_id = t.id
+            WHERE o.order_status = 'Running'
+              AND o.kitchen_status <> 'Served'
+            ORDER BY o.id ASC";
+
+                var orders = new List<dynamic>();
+                var ids = new List<int>();
+
+                using (var cmd = new MySqlCommand(query, conn))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        int id = Convert.ToInt32(reader["id"]);
+                        ids.Add(id);
+                        orders.Add(new
+                        {
+                            id,
+                            orderNo = reader["orderNo"]?.ToString(),
+                            orderType = reader["orderType"]?.ToString(),
+                            kitchenStatus = reader["kitchenStatus"]?.ToString(),
+                            createdDate = reader["createdDate"] == DBNull.Value
+                                ? (DateTime?)null : Convert.ToDateTime(reader["createdDate"]),
+                            tableName = reader["tableName"]?.ToString() ?? "N/A",
+                            items = new List<object>()
+                        });
+                    }
+                }
+
+                // Pull the items for those orders in one query
+                if (ids.Count > 0)
+                {
+                    string inList = string.Join(",", ids);
+                    string itemsQuery = $@"
+                SELECT order_id AS orderId, item_name AS itemName, qty
+                FROM tbl_order_details
+                WHERE order_id IN ({inList})
+                ORDER BY id ASC";
+
+                    using var cmd = new MySqlCommand(itemsQuery, conn);
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        int oid = Convert.ToInt32(reader["orderId"]);
+                        var ord = orders.FirstOrDefault(o => o.id == oid);
+                        if (ord != null)
+                        {
+                            ((List<object>)ord.items).Add(new
+                            {
+                                itemName = reader["itemName"]?.ToString(),
+                                qty = reader["qty"]
+                            });
+                        }
+                    }
+                }
+
+                return Json(new { status = true, data = orders });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateKitchenStatus([FromBody] KitchenStatusRequest model)
+        {
+            try
+            {
+                var allowed = new[] { "New", "Preparing", "Ready", "Served" };
+                if (!allowed.Contains(model.Status))
+                    return Json(new { status = false, message = "Invalid kitchen status" });
+
+                using var conn = await OpenConnectionAsync();
+
+                string query = @"UPDATE tbl_order SET kitchen_status = @status WHERE id = @orderId";
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@status", model.Status);
+                cmd.Parameters.AddWithValue("@orderId", model.OrderId);
+
+                int affected = await cmd.ExecuteNonQueryAsync();
+                if (affected == 0)
+                    return Json(new { status = false, message = "Order not found" });
+
+                return Json(new { status = true, message = "Kitchen status updated" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
 
         #endregion
+
+
+
 
 
 
