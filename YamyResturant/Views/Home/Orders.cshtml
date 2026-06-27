@@ -472,11 +472,11 @@
                         <th>Type</th>
                         <th>Customer</th>
                         <th>Table</th>
-                        <th>Items</th>
+                       @*  <th>Items</th> *@
                         <th>Amount</th>
                         <th>Order Status</th>
-                        <th>Payment Status</th>
-                        <th width="150">Actions</th>
+                        <th width="120">Payment Status</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="ordersTableBody"></tbody>
@@ -687,7 +687,6 @@
                         <td>${typeBadge}</td>
                         <td>${order.customerName || 'Walk-In'}</td>
                         <td>${order.tableName || 'N/A'}</td>
-                        <td>${itemCount} items</td>
                         <td>AED ${parseFloat(order.grandTotal).toFixed(2)}</td>
                         <td>${statusBadge}</td>
                         <td>${paymentBadge}</td>
