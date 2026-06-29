@@ -20,8 +20,14 @@
         public string MealTimesRaw { get; set; }
 
         public IFormFile ImageFile { get; set; }
+        public List<MenuItemAssemblyRequest> Items { get; set; }
     }
 
+    public class MenuItemAssemblyRequest
+    {
+        public int ItemId { get; set; }
+        public decimal Qty { get; set; }
+    }
     public class TableRequest
     {
         public int Id { get; set; }

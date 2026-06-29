@@ -25,8 +25,8 @@ namespace YamyProject.Controllers
         private readonly string _purchaseType = "Service";
         private readonly int _fallbackItemId = 1;     
         private readonly Dictionary<string, int> _itemCache = new();
-
-       // private readonly string _paymentType = "Vendor";
+        private Dictionary<string, int> _vendorByName = new();
+        // private readonly string _paymentType = "Vendor";
         private readonly string _method = "Cheque";
         private readonly bool _isSubContractor = false;
         // resolved defaults (fallbacks)
@@ -646,14 +646,14 @@ namespace YamyProject.Controllers
                     throw new Exception("tbl_coa_config missing one of: Vendor / Purchase / Vat Input.");
             }
 
-        private async Task<int> ResolveVendorIdAsync(MySqlConnection conn, MySqlTransaction tx, string name)
-            {
-                using var cmd = new MySqlCommand(
-                    "SELECT id FROM tbl_vendor WHERE TRIM(name) = TRIM(@name) LIMIT 1", conn, tx);
-                cmd.Parameters.AddWithValue("@name", name);
-                var res = await cmd.ExecuteScalarAsync();
-                return (res != null && res != DBNull.Value) ? Convert.ToInt32(res) : 0;
-            }
+        //private async Task<int> ResolveVendorIdAsync(MySqlConnection conn, MySqlTransaction tx, string name)
+        //    {
+        //        using var cmd = new MySqlCommand(
+        //            "SELECT id FROM tbl_vendor WHERE TRIM(name) = TRIM(@name) LIMIT 1", conn, tx);
+        //        cmd.Parameters.AddWithValue("@name", name);
+        //        var res = await cmd.ExecuteScalarAsync();
+        //        return (res != null && res != DBNull.Value) ? Convert.ToInt32(res) : 0;
+        //    }
 
         private async Task<int> ResolveProjectIdAsyncs(MySqlConnection conn, MySqlTransaction tx, string name)
             {
@@ -2168,6 +2168,7 @@ namespace YamyProject.Controllers
             {
                 await bconn.OpenAsync();
                 await LoadAccountCacheAsync(bconn);
+                await LoadVendorCacheAsync(bconn);
             }
 
             foreach (var grp in groups)
@@ -2242,18 +2243,30 @@ namespace YamyProject.Controllers
                                 goto NextGroup;
                             }
 
+                            // Resolve vendor ID (partner name → vendor ID)
+                            int vendorId = await ResolveVendorIdAsync(conn, tx, line.Partner);
+                            if (!string.IsNullOrWhiteSpace(line.Partner) && vendorId <= 0)
+                            {
+                                failed++;
+                                errors.Add($"SN {sn}: Vendor '{line.Partner}' not found");
+                                failedList.Add(new { sn, code = jvCode, reason = $"Vendor not found: '{line.Partner}'" });
+                                await tx.RollbackAsync();
+                                InvalidateProjects(createdProjectKeys);
+                                goto NextGroup;
+                            }
+
                             int projectId = await GetOrCreateProjectIdAsync(conn, tx, line.Project, createdProjectKeys);
 
                             await InsertJVDetailAsync(conn, tx, headRow.Date, jvId, accountId,
-                                line.Debit, line.Credit, line.Description, line.Partner, projectId);
+                                line.Debit, line.Credit, line.Description, vendorId, projectId);
 
                             if (line.Debit > 0)
                                 await InsertJVTransactionAsync(conn, tx, headRow.Date, accountId,
-                                    line.Debit, 0, jvId, line.Description, jvCode);
+                                    line.Debit, 0, jvId, line.Description, jvCode, vendorId);
 
                             if (line.Credit > 0)
                                 await InsertJVTransactionAsync(conn, tx, headRow.Date, accountId,
-                                    0, line.Credit, jvId, line.Description, jvCode);
+                                    0, line.Credit, jvId, line.Description, jvCode, vendorId);
                         }
 
                         await tx.CommitAsync();
@@ -2329,7 +2342,7 @@ SELECT LAST_INSERT_ID();";
 
         private async Task InsertJVDetailAsync(MySqlConnection conn, MySqlTransaction tx,
             DateTime date, int jvId, int accountId, decimal debit, decimal credit,
-            string description, string partner, int projectId)
+            string description, int vendorId, int projectId)
         {
             var sql = @"
 INSERT INTO tbl_journal_voucher_details
@@ -2343,8 +2356,8 @@ VALUES (@date, @debit, @credit, @inv_id, @description, @account_id, @partner, @p
             cmd.Parameters.AddWithValue("@inv_id", jvId);
             cmd.Parameters.AddWithValue("@description", Truncate(description ?? "", 500));
             cmd.Parameters.AddWithValue("@account_id", accountId);
-            cmd.Parameters.AddWithValue("@partner", Truncate(partner ?? "", 200));
-            // project_id is NOT NULL -> store 0 when the line has no project (contra lines)
+            int defaultVendorId = 1;  // "No Vendor"
+            cmd.Parameters.AddWithValue("@partner", vendorId > 0 ? vendorId : defaultVendorId);
             cmd.Parameters.AddWithValue("@project_id", projectId > 0 ? projectId : 0);
 
             await cmd.ExecuteNonQueryAsync();
@@ -2352,7 +2365,7 @@ VALUES (@date, @debit, @credit, @inv_id, @description, @account_id, @partner, @p
 
         private async Task InsertJVTransactionAsync(MySqlConnection conn, MySqlTransaction tx,
             DateTime date, int accountId, decimal debit, decimal credit, int jvId,
-            string description, string voucherCode)
+            string description, string voucherCode, int vendorId)
         {
             var sql = @"
 INSERT INTO tbl_transaction
@@ -2392,6 +2405,44 @@ VALUES (@date, @account_id, @debit, @credit, @transaction_id, @hum_id, @t_type, 
                 if (!_accountByName.ContainsKey(key))
                     _accountByName[key] = id;
             }
+        }
+
+        // Load vendor cache at startup
+        private async Task LoadVendorCacheAsync(MySqlConnection conn)
+        {
+            using var cmd = new MySqlCommand(
+                "SELECT id, name FROM tbl_vendor ORDER BY name", conn);
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var key = reader.GetString("name").Trim();
+                var id = reader.GetInt32("id");
+                if (!_vendorByName.ContainsKey(key))
+                    _vendorByName[key] = id;
+            }
+        }
+
+        // Resolve vendor name to ID; returns 0 if not found or name is empty
+        private async Task<int> ResolveVendorIdAsync(MySqlConnection conn, MySqlTransaction tx, string vendorName)
+        {
+            var key = (vendorName ?? "").Trim();
+            if (key.Length == 0) return 0;  // optional vendor field
+
+            // Check cache first
+            if (_vendorByName.TryGetValue(key, out var cachedId))
+                return cachedId;
+
+            // Query database
+            using var cmd = new MySqlCommand(
+                "SELECT id FROM tbl_vendor WHERE TRIM(name)=TRIM(@n) OR TRIM(name) LIKE CONCAT('%',TRIM(@n),'%') LIMIT 1",
+                conn, tx);
+            cmd.Parameters.AddWithValue("@n", key);
+            var result = await cmd.ExecuteScalarAsync();
+            int id = (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
+
+            // Cache the result
+            _vendorByName[key] = id;
+            return id;
         }
 
         // get-or-create project; records newly created keys so they can be invalidated on rollback
@@ -2451,6 +2502,9 @@ SELECT LAST_INSERT_ID();", conn, tx))
         }
 
         // ============== EXCEL READER ==============
+        // Robust reader: instead of a hardcoded Skip(N), it scans for the header row
+        // (the row whose first cell == "SN") and processes every data row after it.
+        // This works no matter how many blank/metadata/preamble rows the export has.
 
         private List<JVRow> ReadJVRows(string filePath)
         {
@@ -2461,24 +2515,37 @@ SELECT LAST_INSERT_ID();", conn, tx))
             var snDateCache = new Dictionary<string, DateTime>();
             var snProjectCache = new Dictionary<string, string>();   // header line's project, inherited by contra lines
 
-            // Skip rows 0-4 (metadata + header at index 4), data from index 5+
-            foreach (var r in ws.RowsUsed().Skip(5))
-            {
-                string snStr = r.Cell("A").GetString().Trim();
-                string dateStr = r.Cell("B").GetString().Trim();
+            bool headerSeen = false;   // becomes true once we pass the "SN" column-header row
 
+            foreach (var r in ws.RowsUsed())
+            {
+                // Read the SN cell, resolving a formula result to its number/text if needed
+                var aCell = r.Cell("A");
+                string snStr = aCell.GetString().Trim();
                 if (snStr.StartsWith("="))
                 {
-                    var aCell = r.Cell("A");
                     snStr = aCell.DataType == XLDataType.Number
                         ? ((int)aCell.GetDouble()).ToString()
                         : aCell.GetString().Trim();
                 }
 
+                // The column-header row: mark it and skip. Everything before it is preamble.
                 if (snStr.Equals("SN", StringComparison.OrdinalIgnoreCase))
+                {
+                    headerSeen = true;
+                    continue;
+                }
+
+                // Ignore any preamble/metadata rows that appear before the header.
+                if (!headerSeen)
+                    continue;
+
+                // Blank SN with no usable data -> skip
+                if (string.IsNullOrWhiteSpace(snStr))
                     continue;
 
                 string sn = snStr;
+                string dateStr = r.Cell("B").GetString().Trim();
 
                 DateTime date;
                 if (string.IsNullOrWhiteSpace(dateStr))
@@ -2506,10 +2573,10 @@ SELECT LAST_INSERT_ID();", conn, tx))
                         snDateCache[sn] = date;
                 }
 
-                string partner = r.Cell("C").GetString().Trim();   // Noble account/project name
+                string partner = r.Cell("C").GetString().Trim();   // Vendor name
                 string accountName = r.Cell("D").GetString().Trim();   // real GL account
                 string project = r.Cell("E").GetString().Trim();   // Project (blank on contra lines)
-                string description = r.Cell("F").GetString().Trim();
+                string description = r.Cell("H").GetString().Trim();
 
                 // project: header line has it; detail (contra) lines are blank -> inherit the SN's project
                 if (string.IsNullOrWhiteSpace(project))
@@ -2522,8 +2589,9 @@ SELECT LAST_INSERT_ID();", conn, tx))
                     if (!snProjectCache.ContainsKey(sn))
                         snProjectCache[sn] = project;    // cache header's project for this SN
                 }
-                decimal debit = ParseNumber(r.Cell("H"));
-                decimal credit = ParseNumber(r.Cell("I"));
+
+                decimal debit = ParseNumber(r.Cell("I"));
+                decimal credit = ParseNumber(r.Cell("J"));
 
                 if (string.IsNullOrWhiteSpace(accountName))
                     continue;
@@ -2535,13 +2603,16 @@ SELECT LAST_INSERT_ID();", conn, tx))
                     Sn = sn,
                     Date = date,
                     AccountName = accountName,
-                    Partner = partner,
+                    Partner = partner,  // Keep as vendor name string; will be resolved to ID during import
                     Project = project,
                     Description = description,
                     Debit = debit,
                     Credit = credit
                 });
             }
+
+            if (!headerSeen)
+                Console.WriteLine("WARNING: no 'SN' header row found - nothing was parsed. Check the sheet/columns.");
 
             Console.WriteLine($"ReadJVRows: parsed {rows.Count} detail lines from Excel");
             return rows;
@@ -2585,7 +2656,7 @@ SELECT LAST_INSERT_ID();", conn, tx))
             public string Sn { get; set; } = "";
             public DateTime Date { get; set; }
             public string AccountName { get; set; } = "";
-            public string Partner { get; set; } = "";
+            public string Partner { get; set; } = "";  // Vendor name (resolved to ID during import)
             public string Project { get; set; } = "";
             public string Description { get; set; } = "";
             public decimal Debit { get; set; }

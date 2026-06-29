@@ -1,5 +1,8 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
+using Org.BouncyCastle.Asn1.Ocsp;
+using System.Text.Json;
 using YamyRestaurant.Models;
 
 
@@ -9,11 +12,12 @@ namespace YamyResturant.Controllers
     {
         private readonly ILogger<HomeController> _logger;
         private readonly IConfiguration _config;
-
-        public HomeController(ILogger<HomeController> logger, IConfiguration config)
+        private readonly int _userId;
+        public HomeController(ILogger<HomeController> logger, IConfiguration config, IHttpContextAccessor httpContextAccessor)
         {
             _logger = logger;
             _config = config;
+            
         }
 
         public IActionResult Home()
@@ -115,6 +119,47 @@ namespace YamyResturant.Controllers
                 if (conn == null)
                     return Json(new { status = false, message = "Session expired" });
 
+                // ================= PARSE ITEMS (WITH DEBUGGING) =================
+                List<MenuItemAssemblyRequest> items = new();
+
+                // Get the raw Items JSON string from form
+                string itemsJson = Request.Form["Items"].ToString();
+                System.Diagnostics.Debug.WriteLine($"?? Raw Items JSON: {itemsJson}");
+
+                if (!string.IsNullOrEmpty(itemsJson))
+                {
+                    try
+                    {
+                        // ? IMPORTANT: Parse the JSON correctly
+                        var options = new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        };
+
+                        items = JsonSerializer.Deserialize<List<MenuItemAssemblyRequest>>(itemsJson, options);
+
+                        System.Diagnostics.Debug.WriteLine($"? Parsed Items Count: {items?.Count ?? 0}");
+
+                        if (items != null)
+                        {
+                            foreach (var item in items)
+                            {
+                                System.Diagnostics.Debug.WriteLine(
+                                    $"   ?? Item - ID: {item.ItemId}, Qty: {item.Qty}"
+                                );
+                            }
+                        }
+                    }
+                    catch (JsonException ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"? JSON Parse Error: {ex.Message}");
+                        return Json(new { status = false, message = $"Invalid items format: {ex.Message}" });
+                    }
+                }
+
+                if (items == null)
+                    items = new List<MenuItemAssemblyRequest>();
+
                 // ================= DUPLICATE CHECK =================
                 string duplicateQuery = @"
         SELECT COUNT(*) 
@@ -133,7 +178,7 @@ namespace YamyResturant.Controllers
                         return Json(new { status = false, message = "Already exists" });
                 }
 
-                // ================= MEAL TIMES (FIXED) =================
+                // ================= MEAL TIMES =================
                 string mealTimes = model.MealTimesRaw ?? "[]";
 
                 // ================= IMAGE UPLOAD =================
@@ -154,6 +199,8 @@ namespace YamyResturant.Controllers
                     await model.ImageFile.CopyToAsync(stream);
                 }
 
+                long menuId = model.Id;
+
                 // ================= INSERT =================
                 if (model.Id == 0)
                 {
@@ -169,7 +216,8 @@ namespace YamyResturant.Controllers
             INSERT INTO tbl_menu_item
             (code, category_id, subcategory_name, meal_times, price, is_active, image)
             VALUES
-            (@code, @categoryId, @name, @mealTimes, @price, @isActive, @image)";
+            (@code, @categoryId, @name, @mealTimes, @price, @isActive, @image);
+            SELECT LAST_INSERT_ID();";
 
                     using var cmdIns = new MySqlCommand(insertQuery, conn);
 
@@ -179,16 +227,29 @@ namespace YamyResturant.Controllers
                     cmdIns.Parameters.AddWithValue("@mealTimes", mealTimes);
                     cmdIns.Parameters.AddWithValue("@price", model.Price);
                     cmdIns.Parameters.AddWithValue("@isActive", model.IsActive);
-                    cmdIns.Parameters.AddWithValue("@image", imageName);
+                    cmdIns.Parameters.AddWithValue("@image", imageName ?? "");
 
-                    await cmdIns.ExecuteNonQueryAsync();
+                    menuId = Convert.ToInt64(await cmdIns.ExecuteScalarAsync());
 
-                    return Json(new { status = true, message = "Added successfully" });
+                    System.Diagnostics.Debug.WriteLine($"? Menu Item Inserted with ID: {menuId}");
+
+                    // ? SAVE ASSEMBLY ITEMS
+                    if (items.Count > 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"?? Saving {items.Count} assembly items...");
+                        await SaveAssemblyItems(conn, menuId, items);
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"?? No assembly items to save");
+                    }
+
+                    return Json(new { status = true, message = "Added successfully", id = menuId });
                 }
 
                 // ================= UPDATE =================
                 string updateQuery = imageName != null
-                ? @"UPDATE tbl_menu_item SET 
+                    ? @"UPDATE tbl_menu_item SET 
             category_id=@categoryId,
             subcategory_name=@name,
             meal_times=@mealTimes,
@@ -196,7 +257,7 @@ namespace YamyResturant.Controllers
             is_active=@isActive,
             image=@image
             WHERE id=@id"
-                : @"UPDATE tbl_menu_item SET 
+                    : @"UPDATE tbl_menu_item SET 
             category_id=@categoryId,
             subcategory_name=@name,
             meal_times=@mealTimes,
@@ -218,12 +279,86 @@ namespace YamyResturant.Controllers
 
                 await cmdUp.ExecuteNonQueryAsync();
 
+                System.Diagnostics.Debug.WriteLine($"? Menu Item Updated with ID: {model.Id}");
+
+                // ================= REPLACE ASSEMBLY ITEMS =================
+                string deleteQuery = "DELETE FROM tbl_item_assembly WHERE assembly_id=@id";
+
+                using (var delCmd = new MySqlCommand(deleteQuery, conn))
+                {
+                    delCmd.Parameters.AddWithValue("@id", model.Id);
+                    await delCmd.ExecuteNonQueryAsync();
+                }
+
+                // ? SAVE ASSEMBLY ITEMS
+                if (items.Count > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"?? Saving {items.Count} assembly items...");
+                    await SaveAssemblyItems(conn, model.Id, items);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"?? No assembly items to save");
+                }
+
                 return Json(new { status = true, message = "Updated successfully" });
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"? Exception: {ex.Message}\n{ex.StackTrace}");
                 return Json(new { status = false, message = ex.Message });
             }
+        }
+
+        private async Task SaveAssemblyItems(MySqlConnection conn, long menuId, List<MenuItemAssemblyRequest> items)
+        {
+            if (items == null || items.Count == 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"?? SaveAssemblyItems: No items to save");
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"?? SaveAssemblyItems: menuId={menuId}, itemsCount={items.Count}");
+
+            foreach (var item in items)
+            {
+                // ? Validation
+                if (item.ItemId <= 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"?? Skipping item with invalid ItemId: {item.ItemId}");
+                    continue;
+                }
+
+                if (item.Qty <= 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"?? Skipping item with invalid Qty: {item.Qty}");
+                    continue;
+                }
+
+                string query = @"
+        INSERT INTO tbl_item_assembly
+        (assembly_id, item_id, qty)
+        VALUES
+        (@assembly_id, @item_id, @qty)";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@assembly_id", menuId);
+                cmd.Parameters.AddWithValue("@item_id", item.ItemId);
+                cmd.Parameters.AddWithValue("@qty", item.Qty);
+
+                try
+                {
+                    await cmd.ExecuteNonQueryAsync();
+                    System.Diagnostics.Debug.WriteLine($"? Inserted: assembly_id={menuId}, item_id={item.ItemId}, qty={item.Qty}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"? Insert Failed: {ex.Message}");
+                    throw;
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine($"? All {items.Count} assembly items saved successfully");
         }
 
         [HttpPost]
@@ -289,6 +424,43 @@ namespace YamyResturant.Controllers
                     status = false,
                     message = ex.Message
                 });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetItems()
+        {
+            try
+            {
+                using var conn = await OpenConnectionAsync();
+                if (conn == null)
+                    return Json(new { status = false, message = "Session expired" });
+
+                string query = @"
+            SELECT id, name, cost_price
+            FROM tbl_items
+            ORDER BY id DESC";
+
+                List<object> data = new();
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    data.Add(new
+                    {
+                        id = reader["id"],
+                        itemName = reader["name"]?.ToString(),
+                        cost = reader["cost_price"]
+                    });
+                }
+
+                return Json(new { status = true, data });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
             }
         }
 

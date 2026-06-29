@@ -1,68 +1,8 @@
-using QuestPDF.Infrastructure;
-using YamyProject.Core.Consts.Mapping;
-using YamyProject.Services;
-using YamyProject.Services.Implementations;
-using Microsoft.AspNetCore.Localization;
-using System.Globalization;
-using YamyProject.Core.Models;
-
 var builder = WebApplication.CreateBuilder(args);
 var ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-//// Add DbContext with SQL Server
-//builder.Services.AddDbContext<ApplicationDbContext>(options =>
-//    options.UseSqlServer(ConnectionString));
-
-// Add services to the container.
-
-builder.Services.AddScoped<ICustomerService, CustomerService>();
-builder.Services.AddScoped<IListServices, ListServices>();
-builder.Services.AddHttpClient<IMicroserviceClientt, MicroserviceClientt>();
-builder.Services.AddHttpClient<IMicroserviceClient, MicroserviceClient>();
-builder.Services.AddScoped<IEditeCustomerService, CustomerEditeService>();
-builder.Services.AddScoped<ISalesCreateService, SalesCreateService>();
-builder.Services.AddScoped<ISalesQuotationCenterService, SalesQuotationCenterService>();
-builder.Services.AddScoped<ISalesOrderCenterService, SalesOrderCenterService>();
-builder.Services.AddScoped<ISalesProformaCenterService, SalesProformaCenterService>();
-builder.Services.AddScoped<ISalesReturnService, SalesReturnService>();
-builder.Services.AddScoped<IReceiptVoucherService, ReceiptVoucherService>();
-builder.Services.AddScoped<ICreditNoteService, CreditNoteService>();
-builder.Services.AddScoped<ISalesService, SalesService>();
-builder.Services.AddScoped<ISalesServices, SalesServices>();
-builder.Services.AddScoped<ISalesCenterService, SalesCenterService>();
-builder.Services.AddScoped<IStockSettlementService, StockSettlementService>();
-builder.Services.AddScoped<IVendorService, VendorService>();
-builder.Services.AddScoped<IVendorsCenterService, VendorsCenterService>();
-builder.Services.AddScoped<IPurchaseReturnService, PurchaseReturnService>();
-builder.Services.AddScoped<IPurchaseOrdersService, PurchaseOrdersService>();
-builder.Services.AddScoped<IPaymentVoucherService, PaymentVoucherService>();
-builder.Services.AddScoped<IDebitNotesService, DebitNotesService>();
-builder.Services.AddScoped<IAdvancePaymentService, AdvancePaymentService>();
-builder.Services.AddScoped<IGeneralJournalVouchersService, GeneralJournalVouchersService>();
-builder.Services.AddScoped<IIncomeSummaryServices, IncomeSummaryServices>();
-builder.Services.AddScoped<IAttendanceService, AttendanceService>();
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<ICustomerSummaryService, CustomerSummaryService>();
-builder.Services.AddScoped<ISalesReportServices, SalesReportServices>();
-builder.Services.AddScoped<IVendorSummaryService, VendorSummaryService>();
-builder.Services.AddScoped<IPurchaseReportServices, PurchaseReportServices>();
-builder.Services.AddScoped<IVatCorporateService, VatCorporateService>();
-
-builder.Services.AddScoped<IGlobalService, GlobalService>();
-builder.Services.AddScoped<ICurrentUserContextService, CurrentUserContextService>();
-
-builder.Services.AddScoped<IItemStockSettlementService, ItemStockSettlementService>();
-
-builder.Services.AddScoped<ISalesClientService, SalesClientService>();
-
 QuestPDF.Settings.License = LicenseType.Community;
-////
-// Microservice HTTP client
-//builder.Services.AddHttpClient<IMicroserviceClientt, MicroserviceClientt>(client =>
-//{
-//    client.BaseAddress = new Uri(builder.Configuration["Microservices:SettlementApi"]);
-//    client.Timeout = TimeSpan.FromSeconds(10);
-//});
+
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient("ApiClient", client =>
@@ -71,6 +11,16 @@ builder.Services.AddHttpClient("ApiClient", client =>
     client.DefaultRequestHeaders.Accept.Clear();
     client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 });
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowRestaurant", policy =>
+    {
+        policy.WithOrigins("https://localhost:7290")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 
 builder.Services.AddLocalization(options => options.ResourcesPath = "");
 builder.Services.AddMvc().AddViewLocalization();
@@ -126,7 +76,14 @@ builder.Services.AddDbContext<YamyDbContext>((serviceProvider, options) =>
         ServerVersion.AutoDetect(csb.ConnectionString)
     );
 });
-
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.Name = "YamyProjectAuth";
+});
+builder.Services.AddSession(options =>
+{
+    options.Cookie.Name = ".YamyProject.Session";
+});
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 var app = builder.Build();
 
@@ -144,7 +101,7 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseRequestLocalization();
 app.UseSession();
-
+app.UseCors("AllowRestaurant");
 app.UseAuthorization();
 
 app.MapControllerRoute(

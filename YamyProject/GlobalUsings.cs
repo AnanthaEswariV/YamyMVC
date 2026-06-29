@@ -21,3 +21,7 @@ global using Microsoft.EntityFrameworkCore.Metadata.Internal;
 global using YamyProject.Core.Models;
 global using YamyProject.Controllers.InventoryDoc;
 global using System.Globalization;
+global using QuestPDF.Infrastructure;
+global using YamyProject.Core.Consts.Mapping;
+global using Microsoft.AspNetCore.Localization;
+

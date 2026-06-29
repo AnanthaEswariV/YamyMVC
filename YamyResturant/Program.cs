@@ -18,7 +18,15 @@ namespace YamyResturant
                 options.Cookie.IsEssential = true;
             });
 
-
+            builder.Services.ConfigureApplicationCookie(options =>
+            {
+                options.Cookie.Name = "YamyRestaurantAuth";
+            });
+            builder.Services.AddSession(options =>
+            {
+                options.Cookie.Name = ".YamyRestaurant.Session";
+            });
+            builder.Services.AddHttpContextAccessor();
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
