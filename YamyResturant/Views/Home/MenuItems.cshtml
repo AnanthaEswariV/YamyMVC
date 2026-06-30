@@ -426,8 +426,35 @@
             $("#menuForm").removeClass("was-validated");
         }
 
-         $("#menuForm").on("submit", function (e) {
+        function getAssemblyItems() {
+            let items = [];
 
+            $("#ingredientsBody tr").each(function (index) {
+                let itemId = $(this).find(".item-select").val();
+                let qty = $(this).find(".qty").val();
+
+                console.log(`Row ${index}: itemId=${itemId}, qty=${qty}`);
+
+                // Skip empty rows
+                if (!itemId || !qty || parseFloat(qty) <= 0) {
+                    console.warn(`⚠️ Skipping row ${index} - invalid data`);
+                    return true; // continue to next row
+                }
+
+                let item = {
+                    itemId: parseInt(itemId),
+                    qty: parseFloat(qty)
+                };
+
+                console.log(`✅ Adding row ${index}:`, item);
+                items.push(item);
+            });
+
+            console.log(`📊 Total valid items collected: ${items.length}`, items);
+            return items;
+        }
+
+        $("#menuForm").on("submit", function (e) {
             e.preventDefault();
 
             if (!this.checkValidity()) {
@@ -441,9 +468,16 @@
                 mealTimes.push($(this).val());
             });
 
-            // ✅ CRITICAL: Get assembly items
+            // ✅ CRITICAL: Get assembly items BEFORE creating FormData
             let assemblyItems = getAssemblyItems();
-            console.log("📦 Assembly Items to Save:", assemblyItems);
+            console.log("📦 Assembly Items to Send:", JSON.stringify(assemblyItems, null, 2));
+
+            // ✅ Convert items to JSON string
+            let itemsJson = JSON.stringify(assemblyItems);
+            let mealTimesJson = JSON.stringify(mealTimes);
+
+            console.log("📤 Items JSON String:", itemsJson);
+            console.log("📤 Meal Times JSON String:", mealTimesJson);
 
             let formData = new FormData();
 
@@ -453,9 +487,9 @@
             formData.append("Price", $("#price").val());
             formData.append("IsActive", $("#isActive").is(":checked"));
 
-            // ✅ IMPORTANT: Convert items to JSON string
-            formData.append("Items", JSON.stringify(assemblyItems));
-            formData.append("MealTimesRaw", JSON.stringify(mealTimes));
+            // ✅ IMPORTANT: Append as JSON strings, NOT objects
+            formData.append("Items", itemsJson);
+            formData.append("MealTimesRaw", mealTimesJson);
 
             let file = $("#menuImage")[0].files[0];
             if (file) {
@@ -497,21 +531,23 @@
             });
         });
 
-
-         $("#btnAddMenu").on("click", function () {
+        $("#btnAddMenu").on("click", function () {
 
             resetForm();
 
             $("#menuModalLabel").text("Add Menu Item");
             $("#menuModal").modal("show");
         });
+
         $(document).on("click", ".editMenuBtn", function () {
 
             const item = $(this).data("item");
             if (!item) return;
 
-            console.log("Editing item:", item);
+            console.log("📝 Editing item:", item);
+            console.log("🔧 Assembly items:", item.assemblyItems);
 
+            // ========== Fill Menu Item Details ==========
             $("#menuId").val(item.id);
             $("#menuCode").val(item.code);
             $("#subCategoryName").val(item.subCategoryName);
@@ -529,6 +565,7 @@
                 $("#imagePreview").hide();
             }
 
+            // ========== Fill Meal Times ==========
             $('input[name="MealTime"]').prop("checked", false);
 
             let meals = [];
@@ -542,18 +579,139 @@
                 $(`input[name="MealTime"][value="${m}"]`).prop("checked", true);
             });
 
-            // TODO: Load and display assembly items for editing
-            // For now, clear ingredients and let user re-add
-            $("#ingredientsBody").html(createIngredientRow());
-            fillItemDropdown($("#ingredientsBody tr:first .item-select"));
+            // ========== Fill Assembly Items (Ingredients) ==========
+            console.log("🔧 Loading assembly items from GetMenuItems response");
+
+            // Clear existing rows
+            $("#ingredientsBody").empty();
+
+            // ✅ Check if assemblyItems exist in the response
+            if (item.assemblyItems && item.assemblyItems.length > 0) {
+
+                console.log(`✅ Found ${item.assemblyItems.length} assembly items`);
+
+                // Load existing assembly items
+                item.assemblyItems.forEach((assembly, index) => {
+
+                    let rowHtml = `
+                        <tr>
+                            <td class="sno">${index + 1}</td>
+                            <td>
+                                <select class="form-select item-select">
+                                    <option value="">-- Select Item --</option>
+                                </select>
+                            </td>
+                            <td>
+                                <input type="number" class="form-control cost" readonly value="${assembly.cost || 0}" />
+                            </td>
+                            <td>
+                                <input type="number" class="form-control qty" value="${assembly.qty}" step="0.001" min="0" />
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-danger btn-sm remove-row">X</button>
+                            </td>
+                        </tr>`;
+
+                    $("#ingredientsBody").append(rowHtml);
+                });
+
+                // Get all items for dropdown population
+                $.ajax({
+                    url: '@Url.Action("GetItems", "Home")',
+                    type: 'GET',
+
+                    success: function (itemRes) {
+                        if (itemRes.status) {
+                            let allItems = itemRes.data || [];
+                            console.log(`✅ Loaded ${allItems.length} items for dropdown`);
+
+                            // Now populate each dropdown
+                            $("#ingredientsBody tr").each(function (rowIndex) {
+                                let $select = $(this).find(".item-select");
+
+                                // Populate dropdown
+                                $select.empty();
+                                $select.append(`<option value="">-- Select Item --</option>`);
+
+                                allItems.forEach(i => {
+                                    $select.append(`
+                                        <option value="${i.id}" data-cost="${i.cost}">
+                                            ${i.itemName}
+                                        </option>
+                                    `);
+                                });
+
+                                // Set the selected value from assemblyItems
+                                let assemblyItem = item.assemblyItems[rowIndex];
+                                if (assemblyItem) {
+                                    $select.val(assemblyItem.itemId);
+                                    console.log(`✅ Row ${rowIndex}: Set item ${assemblyItem.itemId} (${assemblyItem.itemName}) with qty ${assemblyItem.qty}`);
+                                }
+                            });
+
+                            // Add one empty row for new ingredients
+                            let emptyRow = `
+                                <tr>
+                                    <td class="sno">${item.assemblyItems.length + 1}</td>
+                                    <td>
+                                        <select class="form-select item-select">
+                                            <option value="">-- Select Item --</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control cost" readonly />
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control qty" value="1" step="0.001" min="0" />
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-danger btn-sm remove-row">X</button>
+                                    </td>
+                                </tr>`;
+
+                            $("#ingredientsBody").append(emptyRow);
+
+                            // Populate last empty row
+                            let lastSelect = $("#ingredientsBody tr:last .item-select");
+                            lastSelect.empty();
+                            lastSelect.append(`<option value="">-- Select Item --</option>`);
+                            allItems.forEach(i => {
+                                lastSelect.append(`
+                                    <option value="${i.id}" data-cost="${i.cost}">
+                                        ${i.itemName}
+                                    </option>
+                                `);
+                            });
+
+                            updateSno();
+                            console.log("✅ All dropdowns populated successfully");
+
+                        } else {
+                            console.error("❌ Failed to load items");
+                            toastr.error("Failed to load items");
+                        }
+                    },
+
+                    error: function () {
+                        console.error("❌ Error loading items");
+                        toastr.error("Error loading items");
+                    }
+                });
+
+            } else {
+                // No assembly items, add empty row
+                console.log("⚠️ No assembly items found, adding empty row");
+
+                let emptyRow = createIngredientRow();
+                $("#ingredientsBody").html(emptyRow);
+                fillItemDropdown($("#ingredientsBody tr:first .item-select"));
+            }
 
             $("#menuModalLabel").text("Edit Menu Item");
             $("#menuModal").modal("show");
         });
 
-
-
-                function loadMenuItems() {
+        function loadMenuItems() {
 
             $.ajax({
                 url: '@Url.Action("GetMenuItems", "Home")',
@@ -738,7 +896,6 @@
             });
         }
 
-
         function fillItemDropdown(select) {
 
             select.empty();
@@ -834,35 +991,7 @@
             console.log("Serial numbers updated, total rows:", $("#ingredientsBody tr").length);
         }
 
-        function getAssemblyItems() {
-
-            let items = [];
-
-            $("#ingredientsBody tr").each(function (index) {
-
-                let itemId = $(this).find(".item-select").val();
-                let qty = $(this).find(".qty").val();
-
-                console.log(`Row ${index}: itemId=${itemId}, qty=${qty}`);
-
-                // Skip empty rows
-                if (!itemId || !qty || parseFloat(qty) <= 0) {
-                    console.warn(`⚠️ Skipping row ${index} - invalid data`);
-                    return true; // continue to next row
-                }
-
-                let item = {
-                    itemId: parseInt(itemId),
-                    qty: parseFloat(qty)
-                };
-
-                console.log(`✅ Adding row ${index}:`, item);
-                items.push(item);
-            });
-
-            console.log(`📊 Total valid items: ${items.length}`);
-            return items;
-        }
+      
 
         function createIngredientRow() {
 

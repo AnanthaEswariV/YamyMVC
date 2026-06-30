@@ -1,7 +1,5 @@
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
-using Org.BouncyCastle.Asn1.Ocsp;
 using System.Text.Json;
 using YamyRestaurant.Models;
 
@@ -69,40 +67,83 @@ namespace YamyResturant.Controllers
                 if (conn == null)
                     return Json(new { status = false, message = "Session expired" });
 
+                // ? OPTION 2: SINGLE QUERY with LEFT JOIN - More efficient!
                 string query = @"
-        SELECT m.*, c.name AS category_name
-        FROM tbl_menu_item m
-        LEFT JOIN tbl_item_category c ON c.id = m.category_id
-        ORDER BY m.id DESC";
+            SELECT 
+                m.id,
+                m.code,
+                m.category_id,
+                c.name AS category_name,
+                m.subcategory_name,
+                m.meal_times,
+                m.price,
+                m.is_active,
+                m.image,
+                ia.item_id,
+                ia.qty
+            FROM tbl_menu_item m
+            LEFT JOIN tbl_item_category c ON c.id = m.category_id
+            LEFT JOIN tbl_item_assembly ia ON ia.assembly_id = m.id
+            ORDER BY m.id DESC, ia.id ASC";
 
-                List<object> data = new();
+                Dictionary<int, dynamic> menuDict = new();
 
-                using var cmd = new MySqlCommand(query, conn);
-                using var reader = await cmd.ExecuteReaderAsync();
-
-                int sn = 1;
-
-                while (await reader.ReadAsync())
+                using (var cmd = new MySqlCommand(query, conn))
                 {
-                    data.Add(new
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
-                        sn = sn++,
-                        id = reader["id"],
-                        code = reader["code"]?.ToString(),
-                        categoryId = reader["category_id"],
-                        categoryName = reader["category_name"]?.ToString(),
-                        subCategoryName = reader["subcategory_name"]?.ToString(),
-                        mealTimes = reader["meal_times"]?.ToString(),
-                        price = reader["price"],
-                        isActive = reader["is_active"],
-                        image = reader["image"]?.ToString()
-                    });
+                        int sn = 1;
+                        int lastMenuId = -1;
+
+                        while (await reader.ReadAsync())
+                        {
+                            int menuId = Convert.ToInt32(reader["id"]);
+
+                            // ? Create new menu entry if not exists
+                            if (!menuDict.ContainsKey(menuId))
+                            {
+                                menuDict[menuId] = new
+                                {
+                                    sn = sn++,
+                                    id = menuId,
+                                    code = reader["code"]?.ToString(),
+                                    categoryId = reader["category_id"],
+                                    categoryName = reader["category_name"]?.ToString(),
+                                    subCategoryName = reader["subcategory_name"]?.ToString(),
+                                    mealTimes = reader["meal_times"]?.ToString(),
+                                    price = reader["price"],
+                                    isActive = reader["is_active"],
+                                    image = reader["image"]?.ToString(),
+                                    assemblyItems = new List<object>()
+                                };
+                            }
+
+                            // ? Add assembly item if it exists
+                            var itemId = reader["item_id"];
+                            if (itemId != null && itemId != DBNull.Value)
+                            {
+                                var menuItem = menuDict[menuId];
+                                menuItem.assemblyItems.Add(new
+                                {
+                                    itemId = itemId,
+                                    qty = reader["qty"],
+                                    //itemName = reader["item_name"]?.ToString(),
+                                    //cost = reader["cost"]
+                                });
+                            }
+                        }
+                    }
                 }
+
+                List<object> data = menuDict.Values.Cast<object>().ToList();
+
+                System.Diagnostics.Debug.WriteLine($"? Fetched {data.Count} menu items with assembly details (single query)");
 
                 return Json(new { status = true, data });
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"? Error in GetMenuItems: {ex.Message}\n{ex.StackTrace}");
                 return Json(new { status = false, message = ex.Message });
             }
         }
@@ -115,37 +156,45 @@ namespace YamyResturant.Controllers
                 if (model == null)
                     return Json(new { status = false, message = "Invalid request" });
 
+                // ? FIX 1: Log what we received from the model
+                System.Diagnostics.Debug.WriteLine("=== SaveMenuItem Called ===");
+                System.Diagnostics.Debug.WriteLine($"Id: {model.Id}");
+                System.Diagnostics.Debug.WriteLine($"CategoryId: {model.CategoryId}");
+                System.Diagnostics.Debug.WriteLine($"SubCategoryName: {model.SubCategoryName}");
+                System.Diagnostics.Debug.WriteLine($"Price: {model.Price}");
+                System.Diagnostics.Debug.WriteLine($"IsActive: {model.IsActive}");
+                System.Diagnostics.Debug.WriteLine($"Items (Raw String): {model.Items}");
+                System.Diagnostics.Debug.WriteLine($"MealTimesRaw: {model.MealTimesRaw}");
+
                 using var conn = await OpenConnectionAsync();
                 if (conn == null)
                     return Json(new { status = false, message = "Session expired" });
 
-                // ================= PARSE ITEMS (WITH DEBUGGING) =================
+                // ================= PARSE ITEMS =================
                 List<MenuItemAssemblyRequest> items = new();
 
-                // Get the raw Items JSON string from form
-                string itemsJson = Request.Form["Items"].ToString();
-                System.Diagnostics.Debug.WriteLine($"?? Raw Items JSON: {itemsJson}");
-
-                if (!string.IsNullOrEmpty(itemsJson))
+                // ? FIX 2: Get Items from the model property (already bound by [FromForm])
+                if (!string.IsNullOrEmpty(model.Items))
                 {
+                    System.Diagnostics.Debug.WriteLine($"?? Parsing Items JSON: {model.Items}");
+
                     try
                     {
-                        // ? IMPORTANT: Parse the JSON correctly
                         var options = new JsonSerializerOptions
                         {
                             PropertyNameCaseInsensitive = true
                         };
 
-                        items = JsonSerializer.Deserialize<List<MenuItemAssemblyRequest>>(itemsJson, options);
+                        items = JsonSerializer.Deserialize<List<MenuItemAssemblyRequest>>(model.Items, options);
 
-                        System.Diagnostics.Debug.WriteLine($"? Parsed Items Count: {items?.Count ?? 0}");
+                        System.Diagnostics.Debug.WriteLine($"? Parsed {items?.Count ?? 0} items successfully");
 
-                        if (items != null)
+                        if (items != null && items.Count > 0)
                         {
                             foreach (var item in items)
                             {
                                 System.Diagnostics.Debug.WriteLine(
-                                    $"   ?? Item - ID: {item.ItemId}, Qty: {item.Qty}"
+                                    $"   ? ItemId: {item.ItemId}, Qty: {item.Qty}"
                                 );
                             }
                         }
@@ -156,17 +205,24 @@ namespace YamyResturant.Controllers
                         return Json(new { status = false, message = $"Invalid items format: {ex.Message}" });
                     }
                 }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("?? Items string is null or empty");
+                }
 
+                // Initialize if null
                 if (items == null)
                     items = new List<MenuItemAssemblyRequest>();
 
+                System.Diagnostics.Debug.WriteLine($"?? Total items to save: {items.Count}");
+
                 // ================= DUPLICATE CHECK =================
                 string duplicateQuery = @"
-        SELECT COUNT(*) 
-        FROM tbl_menu_item
-        WHERE id <> @id
-        AND category_id = @categoryId
-        AND subcategory_name = @name";
+            SELECT COUNT(*) 
+            FROM tbl_menu_item
+            WHERE id <> @id
+            AND category_id = @categoryId
+            AND subcategory_name = @name";
 
                 using (var cmd = new MySqlCommand(duplicateQuery, conn))
                 {
@@ -192,7 +248,6 @@ namespace YamyResturant.Controllers
                         Directory.CreateDirectory(folder);
 
                     imageName = $"{Guid.NewGuid()}{Path.GetExtension(model.ImageFile.FileName)}";
-
                     string path = Path.Combine(folder, imageName);
 
                     using var stream = new FileStream(path, FileMode.Create);
@@ -213,11 +268,11 @@ namespace YamyResturant.Controllers
                     string newCode = (lastCode + 1).ToString("D3");
 
                     string insertQuery = @"
-            INSERT INTO tbl_menu_item
-            (code, category_id, subcategory_name, meal_times, price, is_active, image)
-            VALUES
-            (@code, @categoryId, @name, @mealTimes, @price, @isActive, @image);
-            SELECT LAST_INSERT_ID();";
+                INSERT INTO tbl_menu_item
+                (code, category_id, subcategory_name, meal_times, price, is_active, image)
+                VALUES
+                (@code, @categoryId, @name, @mealTimes, @price, @isActive, @image);
+                SELECT LAST_INSERT_ID();";
 
                     using var cmdIns = new MySqlCommand(insertQuery, conn);
 
@@ -250,20 +305,20 @@ namespace YamyResturant.Controllers
                 // ================= UPDATE =================
                 string updateQuery = imageName != null
                     ? @"UPDATE tbl_menu_item SET 
-            category_id=@categoryId,
-            subcategory_name=@name,
-            meal_times=@mealTimes,
-            price=@price,
-            is_active=@isActive,
-            image=@image
-            WHERE id=@id"
+                category_id=@categoryId,
+                subcategory_name=@name,
+                meal_times=@mealTimes,
+                price=@price,
+                is_active=@isActive,
+                image=@image
+                WHERE id=@id"
                     : @"UPDATE tbl_menu_item SET 
-            category_id=@categoryId,
-            subcategory_name=@name,
-            meal_times=@mealTimes,
-            price=@price,
-            is_active=@isActive
-            WHERE id=@id";
+                category_id=@categoryId,
+                subcategory_name=@name,
+                meal_times=@mealTimes,
+                price=@price,
+                is_active=@isActive
+                WHERE id=@id";
 
                 using var cmdUp = new MySqlCommand(updateQuery, conn);
 
@@ -322,7 +377,7 @@ namespace YamyResturant.Controllers
 
             foreach (var item in items)
             {
-                // ? Validation
+                // Validation
                 if (item.ItemId <= 0)
                 {
                     System.Diagnostics.Debug.WriteLine($"?? Skipping item with invalid ItemId: {item.ItemId}");
@@ -336,10 +391,10 @@ namespace YamyResturant.Controllers
                 }
 
                 string query = @"
-        INSERT INTO tbl_item_assembly
-        (assembly_id, item_id, qty)
-        VALUES
-        (@assembly_id, @item_id, @qty)";
+            INSERT INTO tbl_item_assembly
+            (assembly_id, item_id, qty)
+            VALUES
+            (@assembly_id, @item_id, @qty)";
 
                 using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@assembly_id", menuId);

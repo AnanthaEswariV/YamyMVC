@@ -20,7 +20,7 @@
         public string MealTimesRaw { get; set; }
 
         public IFormFile ImageFile { get; set; }
-        public List<MenuItemAssemblyRequest> Items { get; set; }
+        public string Items { get; set; }
     }
 
     public class MenuItemAssemblyRequest
