@@ -989,15 +989,31 @@ ORDER BY l.code;
                 // 3️⃣ Loop through each account and pull its transactions
                 foreach (var acc in accounts)
                 {
+                    //    string sqlTrans = @"
+                    //SELECT 
+                    //    DATE_FORMAT(t.date, '%M %d %Y') AS date,
+                    //    t.transaction_id AS Num,
+                    //    t.type AS Type,
+                    //    t.description,
+                    //    t.debit,
+                    //    t.credit
+                    //FROM tbl_transaction t
+                    //WHERE t.account_id = @id";
+
                     string sqlTrans = @"
                 SELECT 
-                    DATE_FORMAT(t.date, '%M %d %Y') AS date,
-                    t.transaction_id AS Num,
-                    t.type AS Type,
-                    t.description,
-                    t.debit,
-                    t.credit
-                FROM tbl_transaction t
+        DATE_FORMAT(t.date, '%M %d %Y') AS date,
+        t.transaction_id AS Num,
+        t.type AS Type,
+        CASE 
+            WHEN t.type = 'Vendor Payment' THEN pv.description
+            ELSE t.description
+        END AS description,
+        t.debit,
+        t.credit
+    FROM tbl_transaction t
+    LEFT JOIN tbl_payment_voucher pv 
+        ON pv.id = t.transaction_id
                 WHERE t.account_id = @id";
 
                     if (startDate.HasValue && endDate.HasValue)

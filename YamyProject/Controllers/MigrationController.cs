@@ -1598,7 +1598,7 @@ namespace YamyProject.Controllers
                     Sn = r.Cell("B").GetString().Trim(),
                     AccountName = r.Cell("C").GetString().Trim(),   // Payment to (debit)
                     Bank = r.Cell("D").GetString().Trim(),          // Payment From (Credit)
-                  /* Vendor = r.Cell("G").GetString().Trim(),    */ // Partner (only populated on first line of a group)
+                  Vendor = r.Cell("G").GetString().Trim(), 
                     PaymentMethod = r.Cell("H").GetString().Trim(), // "Cash" or "Cheque"
                     ChequeNo = r.Cell("I").GetString().Trim(),
                     Details = (r.Cell("G").GetString().Trim() + " " + r.Cell("F").GetString().Trim() + " " + r.Cell("E").GetString().Trim()).Trim(),
