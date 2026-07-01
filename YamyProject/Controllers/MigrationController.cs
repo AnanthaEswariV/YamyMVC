@@ -2291,7 +2291,8 @@ namespace YamyProject.Controllers
                                 goto NextGroup;
                             }
 
-                            // Resolve vendor ID (partner name → vendor ID)
+                            // Resolve vendor ID (partner name → vendor ID) -- this sheet has no Partner column,
+                            // so line.Partner is always empty and this resolves to 0 (falls back to "No Vendor" in InsertJVDetailAsync).
                             int vendorId = await ResolveVendorIdAsync(conn, tx, line.Partner);
                             if (!string.IsNullOrWhiteSpace(line.Partner) && vendorId <= 0)
                             {
@@ -2550,9 +2551,18 @@ SELECT LAST_INSERT_ID();", conn, tx))
         }
 
         // ============== EXCEL READER ==============
-        // Robust reader: instead of a hardcoded Skip(N), it scans for the header row
-        // (the row whose first cell == "SN") and processes every data row after it.
-        // This works no matter how many blank/metadata/preamble rows the export has.
+        // Column layout confirmed from the actual file: data starts at column B, not A
+        // (column A is entirely blank in this export). Row 1 is a blank banner row,
+        // row 2 is the real header row.
+        //
+        //   B = SN            C = (unlabeled numeric code, e.g. '1'/'9'/'5' — not used)
+        //   D = Date           E = Account
+        //   F = Project        G = Description
+        //   H = Debit          I = Credit
+        //
+        // The reader still scans for the header row dynamically (looking for "SN"
+        // in column B) rather than assuming a fixed row number, so it keeps working
+        // if a future export adds/removes banner rows above the header.
 
         private List<JVRow> ReadJVRows(string filePath)
         {
@@ -2567,14 +2577,14 @@ SELECT LAST_INSERT_ID();", conn, tx))
 
             foreach (var r in ws.RowsUsed())
             {
-                // Read the SN cell, resolving a formula result to its number/text if needed
-                var aCell = r.Cell("A");
-                string snStr = aCell.GetString().Trim();
+                // Read the SN cell (column B), resolving a formula result to its number/text if needed
+                var snCell = r.Cell("B");
+                string snStr = snCell.GetString().Trim();
                 if (snStr.StartsWith("="))
                 {
-                    snStr = aCell.DataType == XLDataType.Number
-                        ? ((int)aCell.GetDouble()).ToString()
-                        : aCell.GetString().Trim();
+                    snStr = snCell.DataType == XLDataType.Number
+                        ? ((int)snCell.GetDouble()).ToString()
+                        : snCell.GetString().Trim();
                 }
 
                 // The column-header row: mark it and skip. Everything before it is preamble.
@@ -2593,7 +2603,7 @@ SELECT LAST_INSERT_ID();", conn, tx))
                     continue;
 
                 string sn = snStr;
-                string dateStr = r.Cell("B").GetString().Trim();
+                string dateStr = r.Cell("D").GetString().Trim();
 
                 DateTime date;
                 if (string.IsNullOrWhiteSpace(dateStr))
@@ -2608,9 +2618,9 @@ SELECT LAST_INSERT_ID();", conn, tx))
                 }
                 else
                 {
-                    var bCell = r.Cell("B");
-                    if (bCell.DataType == XLDataType.DateTime)
-                        date = bCell.GetDateTime();
+                    var dCell = r.Cell("D");
+                    if (dCell.DataType == XLDataType.DateTime)
+                        date = dCell.GetDateTime();
                     else if (!TryParsewDate(dateStr, out date))
                     {
                         Console.WriteLine($"Row {r.RowNumber()} bad date format: '{dateStr}' - skipping");
@@ -2621,10 +2631,9 @@ SELECT LAST_INSERT_ID();", conn, tx))
                         snDateCache[sn] = date;
                 }
 
-                string partner = r.Cell("C").GetString().Trim();   // Vendor name
-                string accountName = r.Cell("D").GetString().Trim();   // real GL account
-                string project = r.Cell("E").GetString().Trim();   // Project (blank on contra lines)
-                string description = r.Cell("H").GetString().Trim();
+                string accountName = r.Cell("E").GetString().Trim();   // real GL account
+                string project = r.Cell("F").GetString().Trim();       // Project (blank on contra lines)
+                string description = r.Cell("G").GetString().Trim();
 
                 // project: header line has it; detail (contra) lines are blank -> inherit the SN's project
                 if (string.IsNullOrWhiteSpace(project))
@@ -2638,8 +2647,8 @@ SELECT LAST_INSERT_ID();", conn, tx))
                         snProjectCache[sn] = project;    // cache header's project for this SN
                 }
 
-                decimal debit = ParseNumber(r.Cell("I"));
-                decimal credit = ParseNumber(r.Cell("J"));
+                decimal debit = ParseNumber(r.Cell("H"));
+                decimal credit = ParseNumber(r.Cell("I"));
 
                 if (string.IsNullOrWhiteSpace(accountName))
                     continue;
@@ -2651,7 +2660,7 @@ SELECT LAST_INSERT_ID();", conn, tx))
                     Sn = sn,
                     Date = date,
                     AccountName = accountName,
-                    Partner = partner,  // Keep as vendor name string; will be resolved to ID during import
+                    /* Partner not present in this sheet - stays "" and is treated as optional */
                     Project = project,
                     Description = description,
                     Debit = debit,
